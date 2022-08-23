@@ -1,0 +1,95 @@
+@charset "utf-8";
+@import url('https://fonts.googleapis.com/css2?family=Ubuntu:wght@500&display=swap');
+
+/* http://sergiolopes.org/css-box-sizing-border-box/ */
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+html {
+    position: relative;
+    height: 100%;
+    overflow-y: scroll;
+    background-color: #B4C6E7;
+}
+
+article {
+    width: 80%;
+    margin: 0 auto;
+}
+
+#principal {
+    font-size: 1.25rem;
+    text-align: center;
+}
+
+#principal figure {
+    width: 250px;
+    margin: 0 auto;
+    padding: 0;
+}
+
+#principal figure img {
+    width: 100%;
+    border: 1px solid black;
+    box-shadow: -7px 7px 5px #444;
+}
+
+#principal h1 {
+    font-family: 'Ubuntu', sans-serif;
+    font-size: 2rem;
+}
+
+.secao {
+    /*background-color: #ccc;*/
+    /* Gradiente gerado em https://cssgradient.io/ */
+    background: rgb(181,181,181);
+    background: linear-gradient(135deg, #ccc 0%, #aaa 100%);
+    border: 2px solid #888;
+    border-radius: 30px;
+    padding: 10px 20px;
+    margin: 10px 0;
+    transition: all 0.5s ease-in-out;
+}
+.secao:hover {
+    background: #eee;
+    box-shadow: -7px 7px 5px #444;
+    transform: translate(5px,-5px);
+}
+
+.secao > h2 {
+    font-size: 1.25rem;
+    color: #2F5496;
+    border-left: 10px solid aquamarine;
+    padding-left: 10px;
+}
+
+.secao:hover > h2 {
+    border-left: 10px solid orangered;
+}
+
+.secao table {
+    margin: 0 auto;
+    border-collapse: collapse;
+}
+
+.secao table thead tr {
+    background-color: white;
+    border-bottom: 2px solid black;
+}
+
+.secao table th,
+.secao table td {
+    padding: 10px 25px;
+    text-align: center;
+}
+
+.secao table tbody tr:nth-child(2n+1) { /*odd*/
+    background-color: #ddd;
+}
+.secao table tbody tr:nth-child(2n) { /*even*/
+    background-color: #bbb;
+}
+.secao table tbody tr:not(:last-child) {
+    border-bottom: 2px solid black;
+}
