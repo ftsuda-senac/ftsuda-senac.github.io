@@ -69,6 +69,13 @@ h1 {
   margin: 30px 20px;
 }
 
+.secao-doc:hover {
+  transition: all 0.5s ease-out;
+  background-color: #bdc3c7;
+  translate: -5px -5px;
+  box-shadow: 0 0 15px #888;
+}
+
 .secao-doc > h2 {
   text-align: center;
 }
@@ -82,6 +89,12 @@ h1 {
   padding: 5px 10px;
   margin: 0 3px;
   background-color: lavenderblush;
+}
+
+#conhecimentos > span:hover {
+  background-color: khaki;
+  font-size: 1.1em;
+  font-weight: bold;
 }
 
 #idiomas > table {
