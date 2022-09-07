@@ -1,0 +1,52 @@
+{
+    "nome": "XXX",
+    "imagem": "url-imagem",
+    "email": "xxxx@xxx.com.br",
+    "telefone": "(11) 99999-1234",
+    "dataNascimento": "2000-01-20",
+    "linkedin": "url-linkedin",
+    "github": "url-github",
+    "experienciasProfissionais": [
+        {
+            "empresa": "Nome empresa 1",
+            "cargo": "XXXXXX",
+            "dataInicio": "2000-01-20",
+            "dataTermino": "2001-02-15"
+        },
+        {
+            "empresa": "Nome empresa 2",
+            "cargo": "XXXXXX",
+            "dataInicio": "2000-01-20",
+            "dataTermino": "2001-02-15"
+        }
+    ],
+    "formacaoAcademica": [
+        {
+            "curso": "XXXXXX",
+            "instituicao": "XXXXX"
+        },
+        {
+            "curso": "XXXXXX",
+            "instituicao": "XXXXX"
+        }
+    ],
+    "conhecimentos": [
+        "conhecimento1",
+        "conhecimento2",
+        "conhecimento3"
+    ],
+    "idiomas": [
+        {
+            "idioma": "Inglês",
+            "leitura": "Bom",
+            "escrita": "Bom",
+            "conversacao": "Ruim"
+        },
+        {
+            "idioma": "Espanhol",
+            "leitura": "Ruim",
+            "escrita": "Ruim",
+            "conversacao": "Bom"
+        }
+    ]
+}

@@ -11,29 +11,32 @@
 
 <body>
   <main class="text-bg-dark">
-    <div class="container-xl">
-      <h1 class="display-3 text-center">Fernando Tsuda</h1>
+    <article class="container-xl">
+      <h1 class="display-3 text-center" id="nome">Fernando Tsuda</h1>
       <div class="row">
         <div class="col-md-4">
-          <div class="card mt-3">
+          <section id="dados-contato" class="card mt-3">
             <img src="img/foto-ftsuda.jpg" class="card-img-top" alt="Foto ftsuda">
             <ul class="list-group list-group-flush">
               <li class="list-group-item"><i class="fa-solid fa-envelope fa-lg fa-fw"></i>
-                <span class="h6">fernando.tsuda@sp.senac.br</span>
+                <span class="h6" id="email">fernando.tsuda@sp.senac.br</span>
               </li>
-              <li class="list-group-item"><i class="fa-solid fa-phone fa-lg fa-fw"></i> <span class="h6">(11) 99999-1234</span>
+              <li class="list-group-item"><i class="fa-solid fa-phone fa-lg fa-fw"></i> <span class="h6" id="telefone">(11)
+                  99999-1234</span>
               </li>
-              <li class="list-group-item"><i class="fa-solid fa-cake-candles fa-lg fa-fw"></i> <span class="h6">01/01/1982</span>
+              <li class="list-group-item"><i class="fa-solid fa-cake-candles fa-lg fa-fw"></i> <span
+                  class="h6" id="dataNascimento">01/01/1982</span>
               </li>
-              <li class="list-group-item"><i class="fa-brands fa-linkedin-in fa-lg fa-fw"></i> <a
+              <li class="list-group-item"><i class="fa-brands fa-linkedin-in fa-lg fa-fw"></i> <a id="urlLinkedin"
                   href="https://br.linkedin.com/in/ftsuda" class="h6">https://br.linkedin.com/in/ftsuda</a></li>
-              <li class="list-group-item"><i class="fa-brands fa-github fa-lg fa-fw"></i> <a
+              <li class="list-group-item"><i class="fa-brands fa-github fa-lg fa-fw"></i> <a id="urlGithub"
                   href="https://github.com/ftsuda-senac" class="h6">https://github.com/ftsuda-senac</a></li>
             </ul>
-          </div>
+          </section>
         </div>
-        <div class="col-md-8">
-          <div class="card text-bg-dark border-info border border-4 mb-3 mt-3">
+        <div id="secao-dados" class="col-md-8">
+
+          <section id="exp-prof" class="card text-bg-dark border-info border border-4 mb-3 mt-3">
             <div class="card-header">
               <h2>Experiências profissionais</h2>
             </div>
@@ -45,8 +48,9 @@
               <h5 class="card-title">Centro Univeristário Senac <small class="text-muted">Professor</small></h5>
               <p class="card-text"><i class="fa-solid fa-calendar"></i> <strong>Desde 2013</strong></p>
             </div>
-          </div>
-          <div class="card text-bg-dark border-info border border-4 mb-3">
+          </section>
+
+          <section id="form-acad" class="card text-bg-dark border-info border border-4 mb-3">
             <div class="card-header">
               <h2>Formação acadêmica</h2>
             </div>
@@ -61,8 +65,9 @@
               <h5 class="card-title">Engenharia Elétrica com ênfase em Computação <small
                   class="text-muted">Poli-USP</small></h5>
             </div>
-          </div>
-          <div class="card text-bg-dark border-info border border-4 mb-3">
+          </section>
+
+          <section id="conhecimentos" class="card text-bg-dark border-info border border-4 mb-3">
             <div class="card-header">
               <h2>Conhecimentos</h2>
             </div>
@@ -72,8 +77,9 @@
               <h5 class="badge text-bg-info">Spring MVC</h5>
               <h5 class="badge text-bg-info">Gerenciamento de projetos</h5>
             </div>
-          </div>
-          <div class="card text-bg-dark border-info border border-4 mb-3">
+          </section>
+
+          <section id="idiomas" class="card text-bg-dark border-info border border-4 mb-3">
             <div class="card-header">
               <h2>Idiomas</h2>
             </div>
@@ -87,7 +93,7 @@
                     <th class="text-center">Conversação</th>
                   </tr>
                 </thead>
-                <tbody >
+                <tbody>
                   <tr>
                     <th class="text-end">Inglês</th>
                     <td class="text-center">Bom</td>
@@ -109,10 +115,11 @@
                 </tbody>
               </table>
             </div>
-          </div>
+          </section>
+
         </div>
       </div>
-    </div>
+    </article>
   </main>
   <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.1/dist/jquery.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/js/bootstrap.bundle.min.js"></script>
