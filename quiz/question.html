@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<title>Quiz</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/css/bootstrap.min.css" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.15.3/css/all.min.css" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/animate.css@4.1.1/animate.min.css">
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.min.js" defer></script>
+<style>
+:root {
+	--text-color: #444;
+	--text-color-active: #f1c40f;
+}
+.question-area {
+	background-color: #fff;
+	z-index: 50;
+	position: -webkit-sticky;
+	position: sticky;
+	top: 0;
+}
+.question-area h2 {
+	font-size: 1.75rem;
+}
+/*
+.opt-background {
+	background-repeat: no-repeat;
+	background-position: center 30%;
+	background-size: cover;
+	text-shadow: 0 0 3px #444;
+	font-size: 2rem;
+}
+*/
+.answer-option > input[type='radio'] {
+	display: none;
+}
+.answer-option > input[type='radio'] + div {
+	position: relative;
+	overflow: hidden;
+	border: 10px solid;
+	border-color: var(--text-color);
+	border-radius: 10px;
+	box-shadow: 3px 3px 3px 2px #ccc;
+	transition: all 0.3s ease-in-out;
+}
+.answer-option > input[type='radio'] + div.text-option {
+	height: 80px;
+}
+.answer-option > input[type='radio'] + div.image-option,
+.answer-option > input[type='radio'] + div.video-option {
+	height: 120px;
+}
+.answer-option > input[type='radio']:checked + div.animation {
+	animation: pulse;
+	animation-duration: 0.5s;
+}
+.answer-option > input[type='radio']:checked + div {
+	border-color: var(--text-color-active);
+	transform: translate(-5px, -5px);
+	box-shadow: 8px 8px 5px 2px #ccc;
+}
+.answer-option > input[type='radio'] + div > img,
+.answer-option > input[type='radio'] + div > video {
+	position: absolute;
+	width: 100%;
+	filter: sepia(0.7) opacity(0.3) blur(1px);
+	transition: all 0.3s ease-in-out;
+}
+.answer-option > input[type='radio'] + div > video {
+	top: -40px;
+}
+.answer-option > input[type='radio']:checked + div > img,
+.answer-option > input[type='radio']:checked + div > video {
+	filter: sepia(0.2) opacity(1);
+}
+.answer-option > input[type='radio']:checked + div > img {
+	transform: scale(1.1);
+}
+.answer-option > input[type='radio'] + div > label {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	right: 0;
+	left: 0;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	cursor: pointer;
+}
+.answer-option > input[type='radio'] + div > label > span {
+	text-align: center;
+	text-shadow: 0 0 3px #333;
+	font-size: 1.25rem;
+	color: var(--text-color);
+}
+.answer-option > input[type='radio']:checked + div > label > span {
+	font-weight: bold;
+	color: var(--text-color-active);
+}
+.action-area {
+	position: -webkit-sticky;
+	position: sticky;
+	bottom: 0;
+}
+</style>
+<script>
+const baseUrl = '';
+const baseApiUrl = baseUrl + '/api';
+var countPageLeave = 0;
+var countMouseLeave = 0;
+
+const correctValue = 'B'
+const response = 'Superman, Coringa e Mulher Maravilha foram os heróis da folia em 2011!';
+
+function ready(fn) {
+	if (document.readyState != 'loading') {
+		fn();
+	} else {
+		document.addEventListener('DOMContentLoaded', fn);
+	}
+}
+ready(function() {
+	document.getElementById('frmQuiz').addEventListener('submit', function(evt) {
+		evt.preventDefault();
+		const formEl = evt.target
+		if (formEl.answer.value === correctValue) {
+			document.querySelector('#msgSuccess > p.response-message').innerHTML = response;
+			document.getElementById('msgSuccess').style.display = 'block';
+			document.getElementById('msgError').style.display = 'none';
+			document.getElementById('sfxSuccess').play();
+		} else {
+			document.querySelector('#msgError > p.response-message').innerHTML = response;
+			document.getElementById('msgSuccess').style.display = 'none';
+			document.getElementById('msgError').style.display = 'block';
+			document.getElementById('sfxError').play();
+		}
+		$('#modalResult').modal('show')
+	});
+
+	// https://developer.mozilla.org/en-US/docs/Web/API/Page_Visibility_API
+	document.addEventListener('visibilitychange', function(evt) {
+		if (document.hidden) {
+			countPageLeave++;
+		}
+		document.getElementById('pageLeave').innerHTML = countPageLeave;
+	}, false);
+	document.addEventListener('mouseleave', function(evt) {
+		countMouseLeave++;
+		document.getElementById('mouseLeave').innerHTML = countMouseLeave;
+	});
+});
+
+</script>
+</head>
+<body>
+<main class="container">
+
+	<div class="row ">
+		<div class="col-12">
+			<h1 class="text-center">QUIZ TITLE</h1>
+		</div>
+	</div>
+	<article>
+		<div class="row question-area">
+			<section class="col-12 question">
+				<h2 class="text-center">Você sabe qual foi o HIT de CARNAVAL de 2011?</h2>
+			</section>
+		</div>
+		<form id="frmQuiz">
+			<section class="row options">
+				<div class="col-md-6 answer-option">
+					<input type="radio" name="answer" value="A" id="optA" />
+					<div class="m-3 image-option">
+						<img src="./media/img/parangole-tony.jpg" style="top: -10px;" />
+						<label for="optA">
+							<span>A. Rebolation - Parangolé</span>
+						</label>
+					</div>
+					<!-- <button class="btn btn-primary btn-block my-3 py-5 shadow opt-background" style="background-image: url('./media/img/parangole-tony.jpg')">A. Rebolation - Parangolé</button> -->
+				</div>
+				<div class="col-md-6 answer-option">
+					<input type="radio" name="answer" value="B" id="optB" />
+					<div class="m-3 image-option">
+						<img src="./media/img/levanoiz.jpg" style="top: -100px;" />
+						<label for="optB">
+							<span>B. Liga da Justiça - Leva Nóiz</span>
+						</label>
+					</div>
+					<!-- <button class="btn btn-primary btn-block my-3 py-5 shadow opt-background" style="background-image: url('./media/img/levanoiz.jpg')">B. Liga da Justiça - Leva Nóiz</button> -->
+				</div>
+				<div class="col-md-6 answer-option">
+					<input type="radio" name="answer" value="C" id="optC" />
+					<div class="m-3 image-option">
+						<img src="./media/img/avioes-forro.jpg" style="top: -30px;" />
+						<label for="optC">
+							<span>C. Enfica - Aviões do Forró</span>
+						</label>
+					</div>
+					<!-- <button class="btn btn-primary btn-block my-3 py-5 shadow opt-background" style="background-image: url('./media/img/avioes-forro.jpg')">C. Enfica - Aviões do Forró</button> -->
+				</div>			
+				<div class="col-md-6 answer-option">
+					<input type="radio" name="answer" value="D" id="optD" />
+					<div class="m-3 image-option">
+						<img src="./media/img/ivete.jpeg" style="top: -20px;" />
+						<label for="optD">
+							<span>D. Cadê Dalila? - Ivete Sangalo</span>
+						</label>
+					</div>
+					<!-- <button class="btn btn-primary btn-block my-3 py-5 shadow opt-background" style="background-image: url('./media/img/ivete.jpeg')">D. Cadê Dalila? - Ivete Sangalo</button> -->
+				</div>
+			</section>
+		</form>
+		<div class="row action-area">
+			<section class="col-md-6 offset-md-3">
+				<button class="btn btn-primary btn-block" type="submit" form="frmQuiz">Responder</button>
+			</section>
+		</div>
+		
+		<div>Saídas da tela: <span id="pageLeave">0</span></div>
+		<div>Mouse saiu da janela: <span id="mouseLeave">0</span></div>
+	</article>
+</main>
+
+<div class="modal" tabindex="-1" id="modalResult">
+	<div class="modal-dialog">
+	<div class="modal-content">
+		<div class="modal-header">
+		<h5 class="modal-title">Resultado</h5>
+		<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+			<span aria-hidden="true">&times;</span>
+		</button>
+		</div>
+		<div class="modal-body" id="result-text">
+		<div class="alert alert-success" role="alert" id="msgSuccess">
+			<h4 class="alert-heading"><i class="fas fa-check fa-lg"></i> ACERTOU!</h4>
+			<hr>
+			<p class="mb-0 response-message"></p>
+		</div>
+		<div class="alert alert-danger" role="alert" id="msgError">
+			<h4 class="alert-heading"><i class="fas fa-times fa-lg"></i> ERROU!</h4>
+			<hr>
+			<p class="mb-0 response-message"></p>
+		</div>
+		</div>
+		<div class="modal-footer">
+		<button type="button" class="btn btn-secondary" data-dismiss="modal">Próxima</button>
+		</div>
+	</div>
+	</div>
+</div>
+
+<audio src="./media/audio/faustao_acertou.mp3" id="sfxSuccess"></audio>
+<audio src="./media/audio/faustao_errou.mp3" id="sfxError"></audio>
+
+</body>
+</html>
