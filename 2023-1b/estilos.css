@@ -1,0 +1,93 @@
+@charset "utf-8";
+
+:root {
+    --texto-padrao: white;
+    --fundo-padrao: #4472C4;
+    color: var(--texto-padrao);
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 20px;
+}
+
+a {
+    color: var(--texto-padrao);
+}
+
+.area-dados {
+    padding: 20px;
+    background-color: var(--fundo-padrao);
+    border-radius: 50px;
+    margin: 10px;
+}
+
+.area-dados > h2 {
+    border-left: 20px solid #ED7D31;
+    padding-left: 10px;
+}
+
+#dados-pessoais > h1 {
+    text-align: center;
+}
+
+#dados-pessoais > div {
+    display: flex;
+}
+
+#dados-pessoais > div > img {
+    border-radius: 50%;
+    border: 5px solid black;
+    width: 250px;
+    height: 250px;
+}
+
+#dados-pessoais > div > div {
+    margin-left: 50px;
+}
+
+.infos-lado-a-lado {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: space-between;
+}
+
+.infos-lado-a-lado > .area-dados {
+    flex-grow: 1;
+    flex-shrink: 1;
+}
+
+#conhecimentos > ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+#conhecimentos > ul > li {
+    list-style: none;
+    padding: 5px 10px;
+    flex-grow: 3;
+    color: brown;
+    text-align: center;
+    background-color: aquamarine;
+    border: 1px solid rebeccapurple;
+    border-radius: 10px;
+}
+
+#idiomas > table {
+    width: 100%;
+}
+
+#idiomas > table > thead > tr {
+    background-color: black;
+}
+
+#idiomas > table > tbody > tr:nth-child(2n+1) {
+    background-color: darkgray;
+}
+
+#idiomas > table > tbody > tr:nth-child(2n) {
+    background-color: gainsboro;
+}
+
+#idiomas > table > tbody > tr > td {
+    text-align: center;
+}

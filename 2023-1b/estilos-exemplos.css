@@ -1,0 +1,44 @@
+@charset "utf-8";
+
+h2 {
+    font-size: 32px;
+    color: greenyellow;
+}
+
+#exp-prof {
+    color: red;
+}
+
+.area-dados {
+    border: 2px solid blue;
+}
+
+[href^='tel'] {
+    color: blueviolet;
+}
+
+[href^='mailto'] {
+    color: pink;
+}
+
+.area-dados.teste {
+    color: aquamarine;
+}
+
+#exp-prof>h2 {
+    color: darkorange;
+}
+
+#exp-prof h3 {
+    border: 1px solid black;
+}
+
+.item-referencia~li {
+    color: rgb(154, 220, 54);
+    font-weight: bold;
+}
+
+h2:hover {
+    color: yellow;
+    background-color: brown;
+}
