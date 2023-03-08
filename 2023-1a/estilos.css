@@ -1,0 +1,89 @@
+@charset "utf-8";
+
+:root {
+    font-family: Verdana, Geneva, Tahoma, sans-serif;
+}
+
+main {
+    background-color: #d9d9d9;
+    margin-bottom: 200px;
+}
+
+header {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: space-between;
+    align-items: center;
+}
+
+figure {
+    width: 300px;
+    height: 300px;
+    border-radius: 50%;
+    overflow: hidden;
+    flex-shrink: 1;
+}
+
+figure > img {
+    width: 100%;
+}
+
+header > div {
+    flex-grow: 1;
+}
+
+header > div ul {
+    padding-left: 0;
+}
+
+header > div li {
+    list-style: none;
+    margin-top: 5px;
+    margin-bottom: 5px;
+}
+
+#conhecimentos {
+    text-align: center;
+    padding: 20px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 50px;
+}
+
+.area-dados {
+    width: 70%;
+    margin: 0 auto;
+}
+
+.area-dados > h2 {
+    border-left: 15px solid #5B9BD5;
+    padding-left: 15px;
+}
+
+.area-dados li {
+    list-style: none;
+}
+
+#idiomas > table {
+    width: 100%;
+}
+
+#idiomas > table > thead {
+    background-color: black;
+    color: white;
+}
+
+#idiomas > table > tbody > tr:nth-last-of-type(2n+1) { /* odd (impar) */
+    background-color: #ccc;
+}
+
+#idiomas > table > tbody > tr:nth-last-of-type(2n) { /* even (par) */
+    background-color: #999;
+}
+
+#idiomas > table > tbody td {
+    text-align: center;
+}

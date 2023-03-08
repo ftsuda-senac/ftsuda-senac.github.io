@@ -1,0 +1,49 @@
+@charset "utf-8";
+
+/*
+* {
+    outline: 1px solid red !important;
+    background-color: rgba(0,0,255,0.15) !important;
+}
+*/
+/*
+section {
+    border: 3px solid red;
+    margin-bottom: 10px;
+}
+#conhecimentos {
+    font-size: 24px;
+    color: blue;
+}
+.area-dados {
+    background-color: cyan;
+}
+[href] {
+    font-weight: bold;
+    font-size: 30px;
+}
+[href^='tel'] {
+    color: green;
+}
+[href^='mailto'] {
+    color: palevioletred;
+}
+*/
+header.area-dados {
+    border: 3px dotted #ccc;
+}
+
+section>ul>li span {
+    font-size: 30px;
+    color: blue;
+}
+
+.referencia~span {
+    border: 3px solid red;
+}
+
+#conhecimentos {
+    border: 5px solid green;
+    padding: 20px 40px 50px 0;
+    margin: 20px;
+}
