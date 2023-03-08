@@ -56,6 +56,15 @@ header > div li {
 .area-dados {
     width: 70%;
     margin: 0 auto;
+    padding: 10px;
+    transition: all ease-in-out 500ms;
+}
+
+.area-dados:hover {
+    background-color: aquamarine;
+    border-radius: 20px;
+    transform: translate(-10px, -10px);
+    box-shadow: 10px 10px 10px #888;
 }
 
 .area-dados > h2 {
