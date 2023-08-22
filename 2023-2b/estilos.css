@@ -1,0 +1,90 @@
+@charset "utf-8";
+
+/*
+* {
+  outline: 3px solid red;
+  background-color: rgba(200, 200, 200, 0.3);
+}
+*/
+
+main {
+  width: 80%;
+  margin: 0 auto;
+}
+
+ul>li {
+  list-style-type: none;
+}
+
+ul>li>i {
+  line-height: unset !important;
+}
+
+:root {
+  --tamanho-foto: 200px;
+}
+
+header {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+#nome-foto {
+  flex-grow: 1;
+}
+
+#nome-foto>div {
+  width: var(--tamanho-foto);
+  height: var(--tamanho-foto);
+  border-radius: 50%;
+  overflow: hidden;
+}
+
+#nome-foto img {
+  width: 100%;
+}
+
+#contato {
+  flex-grow: 2;
+}
+
+.principal {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+}
+
+.principal > div:first-child {
+  flex-grow: 2;
+}
+
+.principal > div:last-child {
+  flex-grow: 2;
+}
+
+.info > h3 {
+  padding: 10px;
+  background-color: #4472c4;
+  color: white;
+  font-size: 1.5em;
+}
+
+table {
+  width: 100%;
+}
+
+table > thead {
+  background-color: black;
+  color: white
+}
+
+table > tbody > tr:nth-child(odd) {
+  background-color: #ddd;
+}
+
+table > tbody > tr:nth-child(even) {
+  background-color: #fff;
+}
