@@ -1,0 +1,106 @@
+@charset "utf-8";
+
+:root {
+    color: white;
+    background-color: black;
+    --cor-borda-conhecimento: rgb(64, 67, 219);
+}
+h1 {
+    text-align: center;
+    font-size: 4rem;
+}
+
+main > div {
+    display: flex;
+}
+
+#dados-contato {
+    width: 34%;
+    padding: 0 10px;
+}
+
+#dados-contato > div {
+    color: black;
+    background-color: white;
+    border-bottom: 1px solid #aaa;
+    padding: 10px 20px;
+}
+
+#dados-contato > div:first-child {
+    padding: 0;
+    border-bottom: none;
+}
+
+#dados-contato > div > i {
+    padding-right: 10px;
+}
+
+#dados-contato > div > img {
+    width: 100%;
+}
+
+.info {
+    border: 2px solid var(--cor-borda-conhecimento);
+    border-radius: 10px;
+    margin-bottom: 20px;
+    padding: 0 10px;
+}
+
+#informacoes {
+    flex-grow: 1;
+}
+
+.info ul {
+    list-style: none;
+    padding-left: 0;
+}
+
+.info li > h3 {
+    display: inline-block;
+    margin-bottom: 5px;
+    font-size: 1.25rem;
+}
+
+.info li > p:first-of-type {
+    display: inline-block;
+    color: #ccc;
+    margin-bottom: 5px;
+    margin-left: 10px;
+}
+
+.info li > p:last-of-type {
+    margin-top: 0;
+}
+
+#conhecimentos li {
+    display: inline;
+    background-color: var(--cor-borda-conhecimento);
+    color: black;
+    padding: 0 5px;
+    margin-left: 5px;
+    border-radius: 2px;
+}
+
+#idiomas > table {
+    width: 80%;
+}
+
+#idiomas > table > thead {
+    background-color: #333;
+}
+
+#idiomas > table tr {
+    border-bottom: #ccc;
+}
+
+#idiomas > table td {
+    text-align: center;
+}
+
+#idiomas > table > tbody tr:nth-child(2n+1) { /* linhas impares */
+    background-color: #777;
+}
+
+#idiomas > table > tbody tr:nth-child(2n) { /* linhas pares */
+    background-color: #555;
+}
