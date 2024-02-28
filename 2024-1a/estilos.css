@@ -1,0 +1,92 @@
+@charset "utf-8";
+
+:root {
+    color: white;
+    background-color: black;
+    font-size: 14px;
+    --cor-borda-conhecimentos: rgb(130, 248, 83);
+}
+
+h1 {
+    text-align: center;
+    font-size: 4rem;
+}
+
+#informacoes > div {
+    background-color: white;
+    color: black;
+    padding: 10px 20px;
+    border-bottom: 1px solid #999
+}
+
+#informacoes > div:first-child {
+    padding: 0;
+    border-bottom: none;
+}
+
+#informacoes > div > img {
+    width: 100%;
+}
+
+main > div {
+    display: flex;
+}
+
+main > div > div {
+    flex-grow: 1;
+    margin-left: 50px;
+}
+
+.info {
+    border: 3px solid var(--cor-borda-conhecimentos);
+    border-radius: 3px;
+    padding: 10px 20px;
+    margin-bottom: 20px;
+}
+
+.info > ul {
+    list-style: none;
+    padding-left: 0;
+}
+
+.info > ul > li > h3 {
+    display: inline-block;
+    font-size: 1.35rem;
+    margin-bottom: 5px;
+}
+
+.info > ul > li > p:first-of-type {
+    display: inline-block;
+    margin-bottom: 5px;
+    color: #888;
+    margin: 15px;
+}
+
+.info > ul > li > p:last-of-type {
+    margin-top: 0;
+}
+
+#conhecimentos li {
+    display: inline-block;
+    padding: 5px 10px;
+    margin-right: 5px;
+    background-color: var(--cor-borda-conhecimentos);
+    color: black;
+    border-radius: 2px;
+}
+
+#idiomas table {
+    width: 100%;
+}
+#idiomas table > thead > tr {
+    background-color: #555;
+}
+#idiomas table > tbody > tr:nth-of-type(2n+1) { /*linhas impares*/
+    background-color: #aaa;
+}
+#idiomas table > tbody > tr:nth-of-type(2n) { /*linhas pares*/
+    background-color: #777;
+}
+#idiomas table td {
+    text-align: center;
+}
