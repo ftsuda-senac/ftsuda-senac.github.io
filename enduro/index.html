@@ -506,7 +506,10 @@ function update(dt){
   const grip  = weather === 'ice' ? 0.45 : 1;
   const steer = (left ? -1 : 0) + (right ? 1 : 0);
   px += steer * (7 + speed * 0.10) * grip * dt;
-  px -= curve * speed * dt * 0.028 * (weather === 'ice' ? 1.7 : 1);
+  // força centrífuga real: a = v²/r  →  proporcional à curvatura × velocidade²
+  // curva aberta (curvatura baixa) quase não puxa; curva fechada em alta velocidade puxa forte
+  const CENTRIFUGAL = 0.00017;
+  px -= curve * speed * speed * CENTRIFUGAL * (weather === 'ice' ? 1.7 : 1) * dt;
   px = Math.max(-ROAD_HALF - 3.5, Math.min(ROAD_HALF + 3.5, px));
 
   const dz = speed * dt;
