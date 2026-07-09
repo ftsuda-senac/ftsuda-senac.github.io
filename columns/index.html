@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>COLUMNS 3D</title>
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#000000">
@@ -37,11 +37,11 @@
   .overlay .btn:active{transform:scale(.96)}
   .hidden{display:none !important}
   #touch{position:fixed;inset:auto 0 0 0;display:none;justify-content:space-between;align-items:flex-end;
-         padding:12px;z-index:6;pointer-events:none}
-  #touch button{width:76px;height:76px;border-radius:14px;border:2px solid var(--hud-dim);
-                background:var(--panel);color:var(--hud);font-size:28px;font-weight:bold;touch-action:none;
+         padding:10px 14px calc(env(safe-area-inset-bottom, 0px) + 46px);z-index:6;pointer-events:none}
+  #touch .stack{display:flex;flex-direction:column;gap:12px}
+  #touch button{width:70px;height:70px;border-radius:14px;border:2px solid var(--hud-dim);
+                background:var(--panel);color:var(--hud);font-size:26px;font-weight:bold;touch-action:none;
                 pointer-events:auto;user-select:none;-webkit-user-select:none}
-  #touch .mid{display:flex;gap:12px}
   @media (pointer:coarse){ #touch{display:flex} }
 </style>
 </head>
@@ -57,12 +57,14 @@
 <div id="chainLbl"></div>
 
 <div id="touch">
-  <button id="btnL">◀</button>
-  <div class="mid">
+  <div class="stack">
     <button id="btnRot">⟳</button>
-    <button id="btnD">▼</button>
+    <button id="btnL">◀</button>
   </div>
-  <button id="btnR">▶</button>
+  <div class="stack">
+    <button id="btnD">▼</button>
+    <button id="btnR">▶</button>
+  </div>
 </div>
 
 <div class="overlay" id="menu">

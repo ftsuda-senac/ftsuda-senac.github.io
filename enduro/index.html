@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>ENDURO 3D</title>
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#000000">
@@ -52,7 +52,8 @@
     .overlay .record{margin-top:8px}
     .overlay .btn{margin-top:14px;padding:10px 26px;font-size:clamp(13px,2.6vw,17px)}
   }
-  #touch{position:fixed;inset:auto 0 0 0;display:none;justify-content:space-between;padding:12px;z-index:6}
+  #touch{position:fixed;inset:auto 0 0 0;display:none;justify-content:space-between;
+         padding:10px 14px calc(env(safe-area-inset-bottom, 0px) + 46px);z-index:6}
   #touch button{width:84px;height:84px;border-radius:14px;border:2px solid var(--hud-dim);
                 background:var(--panel);color:var(--hud);font-size:30px;font-weight:bold;touch-action:none}
   #touch .mid{display:flex;gap:10px}
@@ -179,6 +180,15 @@ function initAudio(){
     engOsc.start();
   } catch(e){ AC = null; }
 }
+/* o motor é um oscilador contínuo; quando o app vai para segundo plano o
+   rAF para de atualizar seu ganho/frequência mas o AudioContext continua
+   rodando, então o som fica "preso" na última nota — suspender/retomar
+   o contexto junto com a visibilidade evita isso */
+document.addEventListener('visibilitychange', () => {
+  if (!AC) return;
+  if (document.hidden){ if (AC.state === 'running') AC.suspend(); }
+  else { if (AC.state === 'suspended') AC.resume(); }
+});
 function blip(freq, dur, vol, type){
   if (!AC) return;
   const o = AC.createOscillator(), g = AC.createGain();
