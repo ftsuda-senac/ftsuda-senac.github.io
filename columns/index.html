@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>COLUMNS 3D</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#000000">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Columns 3D">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<style>
+  :root{ --hud:#ffd24a; --hud-dim:#b8912a; --panel:rgba(8,10,20,.72); }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:"Courier New",ui-monospace,monospace}
+  #c{display:block;width:100%;height:100%}
+  .hud{position:fixed;left:0;right:0;top:0;display:flex;justify-content:space-between;align-items:flex-start;
+       gap:8px;padding:12px 14px;color:var(--hud);text-shadow:0 2px 0 #000;pointer-events:none;user-select:none;z-index:5;
+       flex-wrap:wrap}
+  .hud .box{background:var(--panel);border:2px solid var(--hud-dim);padding:6px 12px;letter-spacing:2px;font-weight:bold;
+            font-size:clamp(12px,2.6vw,18px)}
+  #chainLbl{position:fixed;top:46%;left:50%;transform:translate(-50%,-50%);color:#7CFC00;font-weight:bold;
+            letter-spacing:4px;text-shadow:0 2px 0 #000,0 0 18px #7CFC00;z-index:5;pointer-events:none;
+            font-size:clamp(20px,6vw,44px);opacity:0;transition:opacity .15s}
+  .overlay{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;
+           overflow-y:auto;-webkit-overflow-scrolling:touch;
+           background:rgba(0,0,10,.78);color:var(--hud);z-index:10;text-align:center;padding:24px}
+  .overlay-inner{margin:auto 0;max-width:640px;width:100%;padding:16px 0}
+  .overlay h1{font-size:clamp(28px,8vw,64px);letter-spacing:8px;text-shadow:4px 4px 0 #7326a3,8px 8px 0 #000;margin-bottom:16px}
+  .overlay p{color:#cfd6ff;line-height:1.8;letter-spacing:1px;font-size:clamp(12px,2.4vw,16px)}
+  .overlay .record{margin-top:14px;color:#7CFC00;letter-spacing:2px;font-weight:bold;font-size:clamp(13px,2.8vw,18px)}
+  .overlay .btn{margin-top:24px;background:#7326a3;color:#fff;border:3px solid #ffd24a;padding:14px 34px;
+                font-family:inherit;font-size:clamp(15px,3vw,20px);letter-spacing:4px;cursor:pointer;font-weight:bold}
+  .overlay .btn:active{transform:scale(.96)}
+  .hidden{display:none !important}
+  #touch{position:fixed;inset:auto 0 0 0;display:none;justify-content:space-between;align-items:flex-end;
+         padding:12px;z-index:6;pointer-events:none}
+  #touch button{width:76px;height:76px;border-radius:14px;border:2px solid var(--hud-dim);
+                background:var(--panel);color:var(--hud);font-size:28px;font-weight:bold;touch-action:none;
+                pointer-events:auto;user-select:none;-webkit-user-select:none}
+  #touch .mid{display:flex;gap:12px}
+  @media (pointer:coarse){ #touch{display:flex} }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div class="hud">
+  <div class="box" id="scoreLbl">PONTOS 0</div>
+  <div class="box" id="hiLbl">RECORDE 0</div>
+  <div class="box" id="levelLbl">NÍVEL 1</div>
+  <div class="box" id="jewelLbl">JOIAS 0</div>
+</div>
+<div id="chainLbl"></div>
+
+<div id="touch">
+  <button id="btnL">◀</button>
+  <div class="mid">
+    <button id="btnRot">⟳</button>
+    <button id="btnD">▼</button>
+  </div>
+  <button id="btnR">▶</button>
+</div>
+
+<div class="overlay" id="menu">
+  <div class="overlay-inner">
+    <h1>COLUMNS 3D</h1>
+    <p>Homenagem ao clássico do Master System.<br><br>
+       Colunas de 3 joias caem no poço.<br>
+       Alinhe <b>3 ou mais joias da mesma cor</b> na horizontal,<br>
+       vertical ou diagonal para eliminá-las.<br>
+       Reações em cadeia valem pontos em dobro!<br>
+       A <b>joia mágica</b> ✨ elimina todas as joias<br>
+       da cor em que ela pousar.<br><br>
+       ◀ ▶ mover &nbsp;·&nbsp; ⟳ (↑ ou espaço) trocar cores<br>
+       ▼ acelerar queda &nbsp;·&nbsp; P pausar</p>
+    <div class="record" id="menuRecord"></div>
+    <button class="btn" id="btnStart">INICIAR</button>
+  </div>
+</div>
+
+<div class="overlay hidden" id="over">
+  <div class="overlay-inner">
+    <h1>FIM DE JOGO</h1>
+    <p id="overStats"></p>
+    <div class="record" id="overRecord"></div>
+    <button class="btn" id="btnRetry">JOGAR NOVAMENTE</button>
+  </div>
+</div>
+
+<div class="overlay hidden" id="pause">
+  <div class="overlay-inner">
+    <h1>PAUSA</h1>
+    <p>Pressione P ou toque no botão para continuar.</p>
+    <button class="btn" id="btnResume">CONTINUAR</button>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+'use strict';
+
+/* ============================================================
+   CONFIGURAÇÃO DO JOGO — altere os valores aqui
+   ============================================================ */
+const COLS = 7;              // largura do poço (colunas)
+const ROWS = 15;             // altura do poço (linhas)
+const NCOLORS = 8;           // quantidade de cores/formas (máx. 8)
+const MAGIC_CHANCE  = 0.02;  // chance de coluna mágica (0 a 1)
+const TRIPLE_CHANCE = 0.10;  // chance de coluna com 3 joias iguais (0 a 1)
+const LEVEL_JEWELS = 25;     // joias eliminadas para subir de nível
+const BASE_SPEED = 1.1;      // velocidade de queda no nível 1 (linhas/s)
+const SPEED_PER_LEVEL = 0.5; // aumento de velocidade por nível
+const MAX_SPEED = 9;         // velocidade máxima de queda
+const SOFT_DROP_SPEED = 14;  // velocidade com ▼ pressionado
+const SPIN_SPEED = 0.9;      // velocidade de giro das joias (rad/s), sincronizada entre todas
+const FLASH_T = 0.55;        // duração do pisca-pisca ao eliminar (s)
+const HISCORE_KEY = 'columns3d.hiscore';
+/* ============================================================ */
+
+const COLORS = [0xff3b3b, 0xff9a2a, 0xffe33b, 0x37e05a, 0x3b8cff, 0xc04ae0, 0x2ad9c9, 0xff66ff];
+
+/* ===== Estado do jogo ===== */
+let state = 'menu';           // menu | play | flash | pause | over
+let grid, piece, nextGems, nextMagic;
+let score = 0, level = 1, jewels = 0, chain = 1;
+let hiscore = +(localStorage.getItem(HISCORE_KEY) || 0);
+let flashSet = [], flashTimer = 0, softDrop = false;
+let pauseFrom = 'play';
+
+/* ===== Áudio ===== */
+let AC = null;
+function audioCtx(){
+  if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){} }
+  if (AC && AC.state === 'suspended') AC.resume();
+  return AC;
+}
+function beep(freq, dur = 0.08, type = 'square', vol = 0.12, delay = 0){
+  const a = audioCtx(); if (!a) return;
+  const o = a.createOscillator(), g = a.createGain();
+  o.type = type; o.frequency.value = freq;
+  const t = a.currentTime + delay;
+  g.gain.setValueAtTime(vol, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+  o.connect(g); g.connect(a.destination);
+  o.start(t); o.stop(t + dur + 0.03);
+}
+const sndMove   = () => beep(220, 0.05, 'square', 0.07);
+const sndRotate = () => beep(340, 0.06, 'square', 0.09);
+const sndLock   = () => beep(140, 0.09, 'triangle', 0.14);
+function sndClear(ch){
+  const base = 440 * Math.pow(1.25, ch - 1);
+  beep(base, 0.1, 'square', 0.12, 0);
+  beep(base * 1.25, 0.1, 'square', 0.12, 0.09);
+  beep(base * 1.5, 0.14, 'square', 0.12, 0.18);
+}
+function sndLevel(){ [523, 659, 784, 1047].forEach((f, i) => beep(f, 0.12, 'square', 0.12, i * 0.1)); }
+function sndOver(){ [392, 330, 262, 196].forEach((f, i) => beep(f, 0.22, 'sawtooth', 0.12, i * 0.2)); }
+
+/* ===== Cena Three.js ===== */
+const canvas = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x050510);
+scene.fog = new THREE.Fog(0x050510, 30, 70);
+
+const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 120);
+
+scene.add(new THREE.AmbientLight(0x445566, 0.9));
+const sun = new THREE.DirectionalLight(0xffffff, 0.95);
+sun.position.set(6, 14, 10);
+scene.add(sun);
+const fill = new THREE.PointLight(0x8899ff, 0.5, 60);
+fill.position.set(2.5, 6, 12);
+scene.add(fill);
+
+/* Estrelas de fundo */
+{
+  const pos = [];
+  for (let i = 0; i < 350; i++)
+    pos.push((Math.random() - 0.5) * 90, (Math.random() - 0.5) * 60 + 8, -18 - Math.random() * 35);
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  scene.add(new THREE.Points(g, new THREE.PointsMaterial({ color: 0x99aacc, size: 0.14 })));
+}
+
+/* Poço (moldura) */
+{
+  const frameMat = new THREE.MeshPhongMaterial({ color: 0x2a2a44, shininess: 30 });
+  const edgeMat  = new THREE.MeshPhongMaterial({ color: 0x5a4a9a, emissive: 0x1a1030, shininess: 60 });
+  const wallL = new THREE.Mesh(new THREE.BoxGeometry(0.5, ROWS + 1, 1.2), frameMat);
+  wallL.position.set(-0.85, ROWS / 2 - 0.5, 0);
+  const wallR = wallL.clone(); wallR.position.x = COLS - 1 + 0.85;
+  const floor = new THREE.Mesh(new THREE.BoxGeometry(COLS + 1.7, 0.5, 1.2), frameMat);
+  floor.position.set((COLS - 1) / 2, -0.85, 0);
+  const back = new THREE.Mesh(new THREE.PlaneGeometry(COLS + 0.2, ROWS + 0.2),
+    new THREE.MeshPhongMaterial({ color: 0x0c0c1e, shininess: 10 }));
+  back.position.set((COLS - 1) / 2, ROWS / 2 - 0.5, -0.55);
+  scene.add(wallL, wallR, floor, back);
+  for (let i = 0; i <= COLS; i++) {
+    const line = new THREE.Mesh(new THREE.BoxGeometry(0.03, ROWS, 0.03), edgeMat);
+    line.position.set(i - 0.5, ROWS / 2 - 0.5, -0.5);
+    scene.add(line);
+  }
+}
+
+/* Geometrias/materiais por cor — cada cor tem uma FORMA (como no original) */
+const GEOMS = [
+  new THREE.OctahedronGeometry(0.44),
+  new THREE.BoxGeometry(0.62, 0.62, 0.62),
+  new THREE.CylinderGeometry(0.42, 0.42, 0.42, 6),
+  new THREE.IcosahedronGeometry(0.42),
+  new THREE.SphereGeometry(0.4, 20, 14),
+  new THREE.TorusGeometry(0.3, 0.15, 12, 24),
+  new THREE.ConeGeometry(0.44, 0.72, 12),
+  new THREE.TetrahedronGeometry(0.52)
+];
+const MATS = COLORS.map(c => new THREE.MeshPhongMaterial({
+  color: c, shininess: 90, specular: 0xbbbbbb,
+  emissive: c, emissiveIntensity: 0.12
+}));
+const flashMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+const magicGeom = new THREE.IcosahedronGeometry(0.44, 1);
+const magicMat = new THREE.MeshPhongMaterial({
+  color: 0xffffff, shininess: 100, specular: 0xffffff,
+  emissive: 0xffffff, emissiveIntensity: 0.5
+});
+
+function makeGem(v, magic){
+  const m = magic ? new THREE.Mesh(magicGeom, magicMat) : new THREE.Mesh(GEOMS[v], MATS[v]);
+  m.userData.v = v;
+  return m;
+}
+
+const gemLayer = new THREE.Group();     // joias fixas no poço
+const pieceGroup = new THREE.Group();   // coluna em queda
+const previewGroup = new THREE.Group(); // próxima coluna
+scene.add(gemLayer, pieceGroup, previewGroup);
+let cellMesh = {}; // "r,c" -> mesh
+
+function syncBoard(){
+  while (gemLayer.children.length) gemLayer.remove(gemLayer.children[0]);
+  cellMesh = {};
+  for (let r = 0; r < ROWS; r++)
+    for (let c = 0; c < COLS; c++) {
+      const v = grid[r][c];
+      if (v === null) continue;
+      const m = makeGem(v, false);
+      m.position.set(c, r, 0);
+      gemLayer.add(m);
+      cellMesh[r + ',' + c] = m;
+    }
+}
+
+function buildPieceMeshes(){
+  while (pieceGroup.children.length) pieceGroup.remove(pieceGroup.children[0]);
+  for (let i = 0; i < 3; i++) pieceGroup.add(makeGem(piece.gems[i], piece.magic));
+  while (previewGroup.children.length) previewGroup.remove(previewGroup.children[0]);
+  for (let i = 0; i < 3; i++) {
+    const m = makeGem(nextGems[i], nextMagic);
+    m.position.y = i;
+    m.scale.setScalar(0.8);
+    previewGroup.add(m);
+  }
+}
+
+/* ===== Lógica ===== */
+function emptyGrid(){
+  return Array.from({ length: ROWS }, () => Array(COLS).fill(null));
+}
+function colHeight(c){
+  let h = 0;
+  while (h < ROWS && grid[h][c] !== null) h++;
+  return h;
+}
+function genGems(){
+  if (Math.random() < TRIPLE_CHANCE) {
+    const v = (Math.random() * NCOLORS) | 0;
+    return [v, v, v];
+  }
+  return [0, 0, 0].map(() => (Math.random() * NCOLORS) | 0);
+}
+
+function spawnPiece(){
+  // coluna central, como no original
+  piece = { col: (COLS - 1) >> 1, gems: nextGems, magic: nextMagic, y: ROWS };
+  nextGems = genGems();
+  nextMagic = Math.random() < MAGIC_CHANCE;
+  softDrop = false;
+  chain = 1;
+  buildPieceMeshes();
+  state = 'play';
+}
+
+function findMatches(){
+  const set = new Set();
+  const dirs = [[1, 0], [0, 1], [1, 1], [1, -1]];
+  for (let r = 0; r < ROWS; r++)
+    for (let c = 0; c < COLS; c++) {
+      const v = grid[r][c];
+      if (v === null) continue;
+      for (const [dr, dc] of dirs) {
+        const pr = r - dr, pc = c - dc;
+        if (pr >= 0 && pr < ROWS && pc >= 0 && pc < COLS && grid[pr][pc] === v) continue;
+        let len = 0, rr = r, cc = c;
+        while (rr >= 0 && rr < ROWS && cc >= 0 && cc < COLS && grid[rr][cc] === v) { len++; rr += dr; cc += dc; }
+        if (len >= 3)
+          for (let k = 0; k < len; k++) set.add((r + dr * k) + ',' + (c + dc * k));
+      }
+    }
+  return set;
+}
+
+function compact(){
+  for (let c = 0; c < COLS; c++) {
+    const stack = [];
+    for (let r = 0; r < ROWS; r++) if (grid[r][c] !== null) stack.push(grid[r][c]);
+    for (let r = 0; r < ROWS; r++) grid[r][c] = r < stack.length ? stack[r] : null;
+  }
+}
+
+function startFlash(set){
+  flashSet = [...set];
+  flashTimer = FLASH_T;
+  state = 'flash';
+  pieceGroup.visible = false;
+  sndClear(chain);
+  if (chain > 1) showChain(chain);
+}
+
+function finishFlash(){
+  const n = flashSet.length;
+  for (const key of flashSet) {
+    const [r, c] = key.split(',').map(Number);
+    grid[r][c] = null;
+  }
+  jewels += n;
+  score += n * 15 * level * chain;
+  compact();
+  syncBoard();
+  updateHud();
+  const m = findMatches();
+  if (m.size) { chain++; startFlash(m); return; }
+  const newLevel = 1 + (jewels / LEVEL_JEWELS | 0);
+  if (newLevel > level) { level = newLevel; sndLevel(); }
+  updateHud();
+  spawnPiece();
+  pieceGroup.visible = true;
+}
+
+function lockPiece(){
+  const c = piece.col, h = colHeight(c);
+  piece.y = h;
+  if (piece.magic) {
+    sndLock();
+    if (h > 0) {
+      const color = grid[h - 1][c];
+      const set = new Set();
+      for (let r = 0; r < ROWS; r++)
+        for (let cc = 0; cc < COLS; cc++)
+          if (grid[r][cc] === color) set.add(r + ',' + cc);
+      startFlash(set);
+    } else {
+      spawnPiece();
+    }
+    return;
+  }
+  if (h + 3 > ROWS) {
+    for (let i = 0; i < 3 && h + i < ROWS; i++) grid[h + i][c] = piece.gems[i];
+    syncBoard();
+    gameOver();
+    return;
+  }
+  for (let i = 0; i < 3; i++) grid[h + i][c] = piece.gems[i];
+  syncBoard();
+  sndLock();
+  const m = findMatches();
+  if (m.size) startFlash(m);
+  else { spawnPiece(); pieceGroup.visible = true; }
+}
+
+function move(d){
+  if (state !== 'play') return;
+  const nc = piece.col + d;
+  if (nc < 0 || nc >= COLS) return;
+  if (piece.y < colHeight(nc)) return;
+  piece.col = nc;
+  sndMove();
+}
+function cycle(){
+  if (state !== 'play') return;
+  const g = piece.gems;
+  piece.gems = [g[2], g[0], g[1]];
+  for (let i = 0; i < 3; i++) pieceGroup.children[i].userData.v = piece.gems[i];
+  if (!piece.magic)
+    for (let i = 0; i < 3; i++) {
+      pieceGroup.children[i].geometry = GEOMS[piece.gems[i]];
+      pieceGroup.children[i].material = MATS[piece.gems[i]];
+    }
+  sndRotate();
+}
+
+function fallSpeed(){
+  const base = Math.min(BASE_SPEED + (level - 1) * SPEED_PER_LEVEL, MAX_SPEED);
+  return softDrop ? Math.max(base, SOFT_DROP_SPEED) : base;
+}
+
+function gameOver(){
+  state = 'over';
+  pieceGroup.visible = false;
+  sndOver();
+  if (score > hiscore) {
+    hiscore = score;
+    localStorage.setItem(HISCORE_KEY, hiscore);
+  }
+  document.getElementById('overStats').innerHTML =
+    'PONTOS: <b>' + score + '</b><br>NÍVEL: ' + level + ' · JOIAS: ' + jewels;
+  document.getElementById('overRecord').textContent = 'RECORDE: ' + hiscore;
+  document.getElementById('over').classList.remove('hidden');
+  updateHud();
+}
+
+function startGame(){
+  grid = emptyGrid();
+  score = 0; level = 1; jewels = 0; chain = 1;
+  nextGems = genGems();
+  nextMagic = false;
+  syncBoard();
+  spawnPiece();
+  pieceGroup.visible = true;
+  document.getElementById('menu').classList.add('hidden');
+  document.getElementById('over').classList.add('hidden');
+  updateHud();
+  audioCtx();
+}
+
+/* ===== HUD ===== */
+const chainLbl = document.getElementById('chainLbl');
+let chainFade = null;
+function showChain(ch){
+  chainLbl.textContent = 'CADEIA x' + ch + '!';
+  chainLbl.style.opacity = 1;
+  clearTimeout(chainFade);
+  chainFade = setTimeout(() => chainLbl.style.opacity = 0, 900);
+}
+function updateHud(){
+  document.getElementById('scoreLbl').textContent = 'PONTOS ' + score;
+  document.getElementById('hiLbl').textContent = 'RECORDE ' + Math.max(hiscore, score);
+  document.getElementById('levelLbl').textContent = 'NÍVEL ' + level;
+  document.getElementById('jewelLbl').textContent = 'JOIAS ' + jewels;
+}
+document.getElementById('menuRecord').textContent = hiscore ? 'RECORDE: ' + hiscore : '';
+updateHud();
+
+/* ===== Layout / câmera ===== */
+function layout(){
+  const w = innerWidth, h = innerHeight;
+  renderer.setSize(w, h, false);
+  const aspect = w / h;
+  camera.aspect = aspect;
+  const portrait = aspect < 0.95;
+  let cx, cy, halfW, halfH;
+  if (portrait) {
+    previewGroup.position.set((COLS - 1) / 2 + 1.6, ROWS + 1.4, 0);
+    cx = (COLS - 1) / 2; cy = ROWS / 2 + 1.0;
+    halfW = COLS / 2 + 1.4; halfH = ROWS / 2 + 2.6;
+  } else {
+    previewGroup.position.set(COLS + 1.6, ROWS - 4, 0);
+    cx = (COLS - 1) / 2 + 1.2; cy = ROWS / 2 - 0.3;
+    halfW = COLS / 2 + 3.4; halfH = ROWS / 2 + 1.3;
+  }
+  const tanF = Math.tan(camera.fov * Math.PI / 360);
+  const dist = Math.max(halfH, halfW / aspect) / tanF * 1.06;
+  camera.position.set(cx, cy + 1.2, dist);
+  camera.lookAt(cx, cy, 0);
+  camera.updateProjectionMatrix();
+}
+addEventListener('resize', layout);
+layout();
+
+/* ===== Entrada ===== */
+addEventListener('keydown', e => {
+  if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', ' '].includes(e.key)) e.preventDefault();
+  if (e.key === 'Enter') {
+    if (state === 'menu' || state === 'over') startGame();
+    return;
+  }
+  if (e.key === 'p' || e.key === 'P') { togglePause(); return; }
+  if (e.key === 'ArrowLeft') move(-1);
+  else if (e.key === 'ArrowRight') move(1);
+  else if ((e.key === 'ArrowUp' || e.key === ' ') && !e.repeat) cycle();
+  else if (e.key === 'ArrowDown') softDrop = true;
+});
+addEventListener('keyup', e => { if (e.key === 'ArrowDown') softDrop = false; });
+
+function togglePause(){
+  if (state === 'play' || state === 'flash') {
+    pauseFrom = state;
+    state = 'pause';
+    document.getElementById('pause').classList.remove('hidden');
+  } else if (state === 'pause') {
+    state = pauseFrom;
+    document.getElementById('pause').classList.add('hidden');
+  }
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && (state === 'play' || state === 'flash')) togglePause();
+});
+
+document.getElementById('btnStart').addEventListener('click', startGame);
+document.getElementById('btnRetry').addEventListener('click', startGame);
+document.getElementById('btnResume').addEventListener('click', togglePause);
+
+function bindTouch(id, down, up){
+  const b = document.getElementById(id);
+  b.addEventListener('pointerdown', e => { e.preventDefault(); down(); });
+  if (up) {
+    b.addEventListener('pointerup', up);
+    b.addEventListener('pointercancel', up);
+    b.addEventListener('pointerleave', up);
+  }
+  b.addEventListener('contextmenu', e => e.preventDefault());
+}
+bindTouch('btnL', () => move(-1));
+bindTouch('btnR', () => move(1));
+bindTouch('btnRot', cycle);
+bindTouch('btnD', () => softDrop = true, () => softDrop = false);
+
+/* ===== Loop principal ===== */
+let last = performance.now();
+function animate(now){
+  requestAnimationFrame(animate);
+  const dt = Math.min((now - last) / 1000, 0.05);
+  last = now;
+  const t = now / 1000;
+
+  // Joia mágica: cor ciclando
+  magicMat.color.setHSL((t * 0.9) % 1, 0.9, 0.6);
+  magicMat.emissive.setHSL((t * 0.9) % 1, 0.9, 0.35);
+
+  // Giro sincronizado de todas as joias (mesmo ângulo, mesmo instante)
+  const spinAngle = t * SPIN_SPEED;
+  const spinAll = g => g.children.forEach(m => { m.rotation.y = spinAngle; });
+  spinAll(gemLayer); spinAll(pieceGroup); spinAll(previewGroup);
+
+  if (state === 'play') {
+    piece.y -= fallSpeed() * dt;
+    if (piece.y <= colHeight(piece.col)) lockPiece();
+    if (state === 'play')
+      for (let i = 0; i < 3; i++)
+        pieceGroup.children[i].position.set(piece.col, piece.y + i, 0);
+  } else if (state === 'flash') {
+    flashTimer -= dt;
+    const phase = ((FLASH_T - flashTimer) * 14 | 0) % 2;
+    for (const key of flashSet) {
+      const m = cellMesh[key];
+      if (!m) continue;
+      m.material = phase ? flashMat : MATS[m.userData.v];
+      const s = 1 + 0.3 * Math.sin((FLASH_T - flashTimer) * 20);
+      m.scale.setScalar(s);
+    }
+    if (flashTimer <= 0) finishFlash();
+  }
+
+  renderer.render(scene, camera);
+}
+requestAnimationFrame(animate);
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./service-worker.js');
+  });
+}
+</script>
+</body>
+</html>

@@ -1,7 +1,7 @@
 {
-  "name": "Enduro 3D",
-  "short_name": "Enduro 3D",
-  "description": "Jogo de corrida estilo Enduro em 3D, jogável no navegador.",
+  "name": "Columns 3D",
+  "short_name": "Columns 3D",
+  "description": "Jogo de quebra-cabeça estilo Columns (Master System) em 3D, jogável no navegador.",
   "categories": ["games", "utilities"],
   "start_url": "./",
   "scope": "./",
