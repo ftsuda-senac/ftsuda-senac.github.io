@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>ENDURO 3D</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#000000">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Enduro 3D">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<style>
+  :root{
+    --hud:#ffd24a; --hud-dim:#b8912a; --panel:rgba(8,10,20,.72); --alert:#ff5544;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:"Courier New",ui-monospace,monospace}
+  #c{display:block;width:100%;height:100%}
+  .hud{position:fixed;left:0;right:0;top:0;display:flex;justify-content:space-between;align-items:flex-start;
+       gap:8px;padding:12px 14px;color:var(--hud);text-shadow:0 2px 0 #000;pointer-events:none;user-select:none;z-index:5;
+       flex-wrap:wrap}
+  .hud .box{background:var(--panel);border:2px solid var(--hud-dim);padding:6px 12px;letter-spacing:2px;font-weight:bold;
+            font-size:clamp(13px,2.8vw,20px)}
+  #counter{font-size:clamp(15px,3.2vw,24px)}
+  #timer.low{color:var(--alert);border-color:var(--alert);animation:blink .6s steps(2) infinite}
+  @keyframes blink{50%{opacity:.35}}
+  #subhud{position:fixed;top:64px;right:14px;text-align:right;color:#9fb8d8;text-shadow:0 2px 0 #000;
+          letter-spacing:1px;font-size:clamp(11px,2.2vw,14px);z-index:5;pointer-events:none;line-height:1.7}
+  #weather{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);color:#9fd8ff;
+           text-shadow:0 2px 0 #000;letter-spacing:3px;font-weight:bold;z-index:5;pointer-events:none;
+           font-size:clamp(12px,2.6vw,18px)}
+  #goal{color:#7CFC00}
+  .overlay{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+           background:rgba(0,0,10,.78);color:var(--hud);z-index:10;text-align:center;padding:24px}
+  .overlay h1{font-size:clamp(32px,9vw,70px);letter-spacing:8px;text-shadow:4px 4px 0 #a33,8px 8px 0 #000;margin-bottom:16px}
+  .overlay p{color:#cfd6ff;line-height:1.9;letter-spacing:1px;font-size:clamp(13px,2.6vw,17px);max-width:660px}
+  .overlay .record{margin-top:14px;color:#7CFC00;letter-spacing:2px;font-weight:bold;font-size:clamp(13px,2.8vw,18px)}
+  .overlay .btn{margin-top:24px;background:#a33;color:#fff;border:3px solid #ffd24a;padding:14px 34px;
+                font-family:inherit;font-size:clamp(15px,3vw,20px);letter-spacing:4px;cursor:pointer;font-weight:bold}
+  .overlay .btn:active{transform:scale(.96)}
+  .hidden{display:none !important}
+  #touch{position:fixed;inset:auto 0 0 0;display:none;justify-content:space-between;padding:12px;z-index:6}
+  #touch button{width:84px;height:84px;border-radius:14px;border:2px solid var(--hud-dim);
+                background:var(--panel);color:var(--hud);font-size:30px;font-weight:bold;touch-action:none}
+  #touch .mid{display:flex;gap:10px}
+  @media (pointer:coarse){ #touch{display:flex} }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div class="hud">
+  <div class="box" id="dayLbl">DIA 1</div>
+  <div class="box" id="timer">01:40</div>
+  <div class="box" id="counter">FALTAM 30</div>
+  <div class="box" id="speed">0 km/h</div>
+</div>
+<div id="subhud"></div>
+<div id="weather"></div>
+
+<div id="touch">
+  <button id="btnL">◀</button>
+  <div class="mid"><button id="btnB">▼</button></div>
+  <button id="btnR">▶</button>
+</div>
+
+<div class="overlay" id="menu">
+  <h1>ENDURO 3D</h1>
+  <p>
+    Ultrapasse os carros antes que o <b>contador do dia chegue a zero</b>.<br>
+    Dia 1: 30 carros &nbsp;•&nbsp; Dias seguintes: 45 carros<br>
+    Bater não encerra o jogo — só faz você <b>perder tempo</b>!<br>
+    Se um carro passar você, ele volta para a conta.<br>
+    A cada dia o tráfego fica mais rápido e mais denso.<br><br>
+    ▲ acelerar &nbsp; ▼ frear &nbsp; ◀ ▶ dirigir &nbsp; (ou WASD)<br>
+    Cuidado com caminhões, vans, neblina, pista escorregadia e a noite…
+  </p>
+  <div class="record" id="menuRecord"></div>
+  <button class="btn" id="startBtn">INICIAR</button>
+</div>
+
+<div class="overlay hidden" id="over">
+  <h1 id="overTitle">FIM DE JOGO</h1>
+  <p id="overMsg"></p>
+  <div class="record" id="overRecord"></div>
+  <button class="btn" id="restartBtn">JOGAR DE NOVO</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(() => {
+'use strict';
+
+/* ============================== CONFIG ============================== */
+const SEG_LEN = 15, N_SEG = 62;
+const ROAD_W  = 15, ROAD_HALF = ROAD_W / 2;
+const LANES   = [-5, 0, 5];
+const CURVE_K = 0.00012;
+const MAX_SPEED = 120;
+const SPEED_DISPLAY = 180 / MAX_SPEED;  // só o mostrador: 180 km/h no máximo, física intacta
+const DAY_LENGTH = 100;               // segundos por dia (contador regressivo)
+const POOL_SIZE = 12;                 // veículos no pool (ativos crescem por dia)
+const QUOTA = d => d === 1 ? 30 : 45;
+
+/* dificuldade progressiva por dia */
+function difficulty(d){
+  return {
+    active:   Math.min(POOL_SIZE, 7 + d),                    // densidade do tráfego
+    speedMin: Math.min(0.55, 0.35 + (d - 1) * 0.025),        // fração de MAX_SPEED
+    speedMax: Math.min(0.85, 0.62 + (d - 1) * 0.030),
+  };
+}
+
+/* ============================== PLACAR PERSISTENTE ============================== */
+/* localStorage pode estar indisponível (preview/sandbox): fallback em memória */
+const _mem = {};
+const store = {
+  get(k){ try { return localStorage.getItem(k); } catch(e){ return _mem[k] ?? null; } },
+  set(k, v){ try { localStorage.setItem(k, v); } catch(e){ _mem[k] = String(v); } },
+};
+const best = {
+  day:    parseInt(store.get('enduro3d.bestDay')    || '0', 10),
+  passed: parseInt(store.get('enduro3d.bestPassed') || '0', 10),
+  km:     parseFloat(store.get('enduro3d.bestKm')   || '0'),
+  save(){
+    store.set('enduro3d.bestDay', this.day);
+    store.set('enduro3d.bestPassed', this.passed);
+    store.set('enduro3d.bestKm', this.km.toFixed(1));
+  },
+  label(){
+    return this.day > 0
+      ? `RECORDE — DIA ${this.day} • ${this.passed} ULTRAPASSAGENS • ${this.km.toFixed(1)} km`
+      : '';
+  }
+};
+
+/* ============================== ESTADO ============================== */
+let scene, camera, renderer, clock;
+let sunLight, hemiLight, sunMesh, moonMesh, headLight, headTarget;
+let roadMat, grassMat;
+let segments = [], props = [], traffic = [], player;
+
+let state = 'menu';
+let speed = 0, px = 0;
+let curve = 0, curveTarget = 0, curveTimer = 0;
+let dayTime = 0, day = 1, carsLeft = 30;
+let weather = 'clear';
+let crashTimer = 0, shake = 0;
+let totalPassed = 0, km = 0;
+
+const keys = {};
+
+/* ============================== ÁUDIO ============================== */
+let AC = null, engOsc = null, engGain = null;
+function initAudio(){
+  if (AC) return;
+  try {
+    AC = new (window.AudioContext || window.webkitAudioContext)();
+    engOsc = AC.createOscillator(); engOsc.type = 'sawtooth';
+    engGain = AC.createGain(); engGain.gain.value = 0;
+    engOsc.connect(engGain).connect(AC.destination);
+    engOsc.start();
+  } catch(e){ AC = null; }
+}
+function blip(freq, dur, vol, type){
+  if (!AC) return;
+  const o = AC.createOscillator(), g = AC.createGain();
+  o.type = type || 'square'; o.frequency.value = freq;
+  g.gain.setValueAtTime(vol, AC.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, AC.currentTime + dur);
+  o.connect(g).connect(AC.destination);
+  o.start(); o.stop(AC.currentTime + dur);
+}
+const sndPass  = () => blip(880, .09, .05);
+const sndCrash = () => { blip(90, .4, .18, 'sawtooth'); blip(60, .5, .15, 'square'); };
+const sndDay   = () => { blip(660,.12,.06); setTimeout(()=>blip(880,.12,.06),130); setTimeout(()=>blip(1100,.18,.06),260); };
+const sndTick  = () => blip(1200, .05, .04);
+
+/* ============================== CÉU / CLIMA ============================== */
+const SKY = [
+  [0.00, 0x89b7e8, 0xaac4e0, 0.55, 0.55],
+  [0.10, 0x6ec1ff, 0xbcd8ee, 1.00, 0.85],
+  [0.42, 0x5eb6ff, 0xc4dcee, 1.05, 0.90],
+  [0.50, 0xff8c42, 0xe8a06a, 0.70, 0.60],
+  [0.57, 0x3a2a5e, 0x2a2244, 0.20, 0.30],
+  [0.63, 0x070a1e, 0x0a0d22, 0.04, 0.14],
+  [0.88, 0x070a1e, 0x0a0d22, 0.04, 0.14],
+  [0.95, 0xc86e8a, 0x9a6a80, 0.30, 0.35],
+  [1.00, 0x89b7e8, 0xaac4e0, 0.55, 0.55],
+];
+const _ca = new THREE.Color(), _cb = new THREE.Color();
+function skyAt(t){
+  for (let i = 0; i < SKY.length - 1; i++){
+    const a = SKY[i], b = SKY[i+1];
+    if (t >= a[0] && t <= b[0]){
+      const f = (t - a[0]) / (b[0] - a[0] || 1);
+      return {
+        sky: _ca.setHex(a[1]).lerp(_cb.setHex(b[1]), f).clone(),
+        fog: _ca.setHex(a[2]).lerp(_cb.setHex(b[2]), f).clone(),
+        sun: a[3] + (b[3]-a[3])*f,
+        amb: a[4] + (b[4]-a[4])*f,
+      };
+    }
+  }
+  return { sky:_ca.setHex(SKY[0][1]).clone(), fog:_cb.setHex(SKY[0][2]).clone(), sun:1, amb:1 };
+}
+const isNight = () => dayTime > 0.56 && dayTime < 0.95;
+
+/* ============================== MODELOS DE VEÍCULOS ============================== */
+function addLights(g, halfLen, y){
+  const tailMat = new THREE.MeshBasicMaterial({ color: 0xff2222 });
+  const headMat = new THREE.MeshBasicMaterial({ color: 0xfff2b0 });
+  for (const sx of [-0.7, 0.7]){
+    const t = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.22, 0.06), tailMat);
+    t.position.set(sx, y, halfLen + 0.02); g.add(t);
+    const h = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.2, 0.06), headMat);
+    h.position.set(sx, y, -halfLen - 0.02); g.add(h);
+  }
+}
+function addWheels(g, w, zs, size){
+  const darkMat = new THREE.MeshLambertMaterial({ color: 0x14141c });
+  for (const sx of [-1, 1]) for (const sz of zs){
+    const wh = new THREE.Mesh(new THREE.BoxGeometry(0.42, size, size * 1.2), darkMat);
+    wh.position.set(sx * w, size / 2, sz); g.add(wh);
+  }
+}
+
+function makeVehicle(type, color){
+  const g = new THREE.Group();
+  const bodyMat = new THREE.MeshLambertMaterial({ color });
+  const glassMat = new THREE.MeshLambertMaterial({ color: 0x223344 });
+  let halfLen = 2.1, halfWid = 1.15, speedMul = 1;
+
+  if (type === 'truck'){
+    halfLen = 3.5; halfWid = 1.3; speedMul = 0.78;
+    const box = new THREE.Mesh(new THREE.BoxGeometry(2.5, 2.4, 5.2), bodyMat);
+    box.position.set(0, 1.55, 0.9); g.add(box);
+    const cab = new THREE.Mesh(new THREE.BoxGeometry(2.3, 1.5, 1.7),
+      new THREE.MeshLambertMaterial({ color: 0xdddddd }));
+    cab.position.set(0, 1.1, -2.5); g.add(cab);
+    const glass = new THREE.Mesh(new THREE.BoxGeometry(2.1, 0.6, 1.72), glassMat);
+    glass.position.set(0, 1.45, -2.5); g.add(glass);
+    addWheels(g, 1.15, [-2.4, 0.6, 2.4], 0.9);
+    addLights(g, halfLen, 0.9);
+  } else if (type === 'van'){
+    halfLen = 2.6; halfWid = 1.2; speedMul = 0.9;
+    const body = new THREE.Mesh(new THREE.BoxGeometry(2.3, 1.7, 5.0), bodyMat);
+    body.position.y = 1.1; g.add(body);
+    const glass = new THREE.Mesh(new THREE.BoxGeometry(2.32, 0.5, 1.4), glassMat);
+    glass.position.set(0, 1.55, -1.5); g.add(glass);
+    addWheels(g, 1.1, [-1.7, 1.7], 0.75);
+    addLights(g, halfLen, 0.8);
+  } else if (type === 'sport'){
+    halfLen = 2.0; halfWid = 1.1; speedMul = 1.15;
+    const body = new THREE.Mesh(new THREE.BoxGeometry(2.1, 0.55, 4.0), bodyMat);
+    body.position.y = 0.5; g.add(body);
+    const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.45, 1.6), glassMat);
+    cabin.position.set(0, 0.95, 0.3); g.add(cabin);
+    const wing = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.1, 0.4), bodyMat);
+    wing.position.set(0, 0.95, 1.85); g.add(wing);
+    addWheels(g, 1.05, [-1.3, 1.3], 0.62);
+    addLights(g, halfLen, 0.55);
+  } else { // carro comum
+    const body = new THREE.Mesh(new THREE.BoxGeometry(2.1, 0.75, 4.2), bodyMat);
+    body.position.y = 0.65; g.add(body);
+    const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.62, 2.0), bodyMat);
+    cabin.position.set(0, 1.28, 0.25); g.add(cabin);
+    const glass = new THREE.Mesh(new THREE.BoxGeometry(1.55, 0.4, 2.05), glassMat);
+    glass.position.set(0, 1.32, 0.25); g.add(glass);
+    addWheels(g, 1.06, [-1.35, 1.35], 0.7);
+    addLights(g, halfLen, 0.78);
+  }
+  g.userData = { type, halfLen, halfWid, speedMul, speed: 0, lane: 0, z: -500, counted: false, active: true };
+  return g;
+}
+
+/* ============================== CENA ============================== */
+function buildWorld(){
+  scene = new THREE.Scene();
+  scene.fog = new THREE.Fog(0xbcd8ee, 150, 850);
+
+  camera = new THREE.PerspectiveCamera(72, innerWidth/innerHeight, 0.1, 2500);
+
+  renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('c'), antialias: true });
+  renderer.setSize(innerWidth, innerHeight);
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+
+  hemiLight = new THREE.HemisphereLight(0xcfe8ff, 0x3a5a2a, 0.9);
+  scene.add(hemiLight);
+  sunLight = new THREE.DirectionalLight(0xfff3d0, 1.0);
+  sunLight.position.set(-200, 300, -400);
+  scene.add(sunLight);
+
+  grassMat = new THREE.MeshLambertMaterial({ color: 0x3f7a2e });
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(5000, 5000), grassMat);
+  ground.rotation.x = -Math.PI/2; ground.position.y = -0.06; ground.position.z = -800;
+  scene.add(ground);
+
+  const mMat = new THREE.MeshLambertMaterial({ color: 0x4a5a4a });
+  for (let i = 0; i < 9; i++){
+    const h = 120 + Math.random()*180;
+    const m = new THREE.Mesh(new THREE.ConeGeometry(120 + Math.random()*120, h, 4), mMat);
+    m.position.set(-900 + i*230 + (Math.random()*80-40), h/2 - 10, -1500 - Math.random()*300);
+    m.rotation.y = Math.random();
+    scene.add(m);
+  }
+
+  sunMesh = new THREE.Mesh(new THREE.SphereGeometry(38, 16, 16),
+    new THREE.MeshBasicMaterial({ color: 0xffd75e }));
+  moonMesh = new THREE.Mesh(new THREE.SphereGeometry(26, 16, 16),
+    new THREE.MeshBasicMaterial({ color: 0xdfe6ff }));
+  scene.add(sunMesh, moonMesh);
+
+  roadMat = new THREE.MeshLambertMaterial({ color: 0x33333e });
+  const dashMat = new THREE.MeshLambertMaterial({ color: 0xe8e8e8 });
+  const edgeMat = new THREE.MeshLambertMaterial({ color: 0xffd24a });
+
+  for (let i = 0; i < N_SEG; i++){
+    const g = new THREE.Group();
+    const plane = new THREE.Mesh(new THREE.PlaneGeometry(ROAD_W + 1.6, SEG_LEN + 0.4), roadMat);
+    plane.rotation.x = -Math.PI/2; g.add(plane);
+    for (const x of [-2.5, 2.5]){
+      const d = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.02, SEG_LEN * 0.45), dashMat);
+      d.position.set(x, 0.02, 0); g.add(d);
+    }
+    for (const x of [-ROAD_HALF - 0.5, ROAD_HALF + 0.5]){
+      const e = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.02, SEG_LEN + 0.4), edgeMat);
+      e.position.set(x, 0.02, 0); g.add(e);
+    }
+    g.position.z = -i * SEG_LEN;
+    scene.add(g);
+    segments.push(g);
+  }
+
+  const postMat  = new THREE.MeshLambertMaterial({ color: 0xeeeeee });
+  const trunkMat = new THREE.MeshLambertMaterial({ color: 0x6b4a2a });
+  const leafMat  = new THREE.MeshLambertMaterial({ color: 0x2e6b2e });
+  for (let i = 0; i < 26; i++){
+    const g = new THREE.Group();
+    if (i % 2 === 0){
+      const p = new THREE.Mesh(new THREE.BoxGeometry(0.35, 2.6, 0.35), postMat);
+      p.position.y = 1.3; g.add(p);
+      const top = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.5, 0.4),
+        new THREE.MeshLambertMaterial({ color: 0xcc3322 }));
+      top.position.y = 2.8; g.add(top);
+      g.userData.off = ROAD_HALF + 2.2;
+    } else {
+      const t = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.5, 3, 6), trunkMat);
+      t.position.y = 1.5; g.add(t);
+      const l = new THREE.Mesh(new THREE.ConeGeometry(2.4, 5.5, 7), leafMat);
+      l.position.y = 5.2; g.add(l);
+      g.userData.off = ROAD_HALF + 5 + Math.random()*9;
+    }
+    g.userData.side = (i % 4 < 2) ? -1 : 1;
+    g.position.z = -i * 72;
+    scene.add(g);
+    props.push(g);
+  }
+
+  // pool de tráfego com tipos variados
+  const palette = [0x2277dd, 0x22aa55, 0xddaa22, 0x8844cc, 0x22bbbb, 0xdddddd, 0xdd6622];
+  const types = ['car','car','car','car','car','sport','sport','van','van','truck','truck','car'];
+  for (let i = 0; i < POOL_SIZE; i++){
+    const v = makeVehicle(types[i], palette[i % palette.length]);
+    v.userData.z = -200 - i * 80;
+    scene.add(v);
+    traffic.push(v);
+  }
+
+  player = makeVehicle('car', 0xcc2222);
+  player.position.set(0, 0, 0);
+  scene.add(player);
+
+  headTarget = new THREE.Object3D(); scene.add(headTarget);
+  headLight = new THREE.SpotLight(0xfff6d8, 0, 130, 0.42, 0.5, 1.2);
+  headLight.target = headTarget;
+  scene.add(headLight);
+
+  camera.position.set(0, 4.4, 10);
+}
+
+/* ============================== HELPERS ============================== */
+const curveX = d => (d > 0 ? curve * d * d * CURVE_K : 0);
+
+function respawnVehicle(v, far){
+  const u = v.userData, diff = difficulty(day);
+  if (far !== false) u.z = -(650 + Math.random()*280);
+  u.lane = LANES[(Math.random()*3)|0];
+  const frac = diff.speedMin + Math.random() * (diff.speedMax - diff.speedMin);
+  u.speed = MAX_SPEED * frac * u.speedMul;
+  u.counted = false;
+}
+
+function applyDifficulty(){
+  const diff = difficulty(day);
+  traffic.forEach((v, i) => {
+    v.userData.active = i < diff.active;
+    v.visible = v.userData.active;
+    if (v.userData.active && v.userData.z > -50) respawnVehicle(v);
+  });
+}
+
+function nextDay(){
+  if (carsLeft > 0){ gameOver(); return; }
+  day++;
+  carsLeft = QUOTA(day);                 // contador de carros reinicia
+  weather = Math.random() < 0.6 ? 'clear' : (Math.random() < 0.6 ? 'fog' : 'ice');
+  applyWeather();
+  applyDifficulty();                     // tráfego mais rápido e denso
+  sndDay();
+}
+
+function applyWeather(){
+  const w = document.getElementById('weather');
+  if (weather === 'fog') w.textContent = '≋ NEBLINA ≋';
+  else if (weather === 'ice') w.textContent = '❄ PISTA ESCORREGADIA ❄';
+  else w.textContent = '';
+  roadMat.color.setHex(weather === 'ice' ? 0x7f8ea0 : 0x33333e);
+}
+
+function gameOver(){
+  state = 'over';
+  const newBest = day > best.day || (day === best.day && totalPassed > best.passed);
+  if (newBest){
+    best.day = day; best.passed = totalPassed; best.km = km;
+    best.save();
+  }
+  document.getElementById('over').classList.remove('hidden');
+  document.getElementById('overMsg').innerHTML =
+    `O tempo acabou e ainda faltavam <b>${carsLeft}</b> carros.<br>` +
+    `Você chegou ao <b>DIA ${day}</b> com <b>${totalPassed}</b> ultrapassagens em <b>${km.toFixed(1)} km</b>.`;
+  document.getElementById('overRecord').textContent =
+    (newBest ? '★ NOVO RECORDE! ' : '') + best.label();
+  if (engGain) engGain.gain.value = 0;
+}
+
+function resetGame(){
+  speed = 0; px = 0; curve = 0; curveTarget = 0; curveTimer = 0;
+  dayTime = 0; day = 1; carsLeft = QUOTA(1); weather = 'clear';
+  crashTimer = 0; shake = 0; totalPassed = 0; km = 0;
+  applyWeather();
+  traffic.forEach((v, i) => { v.userData.z = -200 - i * 80; respawnVehicle(v, false); });
+  applyDifficulty();
+  state = 'play';
+}
+
+/* ============================== INPUT ============================== */
+addEventListener('keydown', e => { keys[e.key.toLowerCase()] = true; if (e.key.startsWith('Arrow')) e.preventDefault(); });
+addEventListener('keyup',   e => { keys[e.key.toLowerCase()] = false; });
+
+const touch = { l:false, r:false, b:false, active:false };
+function bindTouch(id, prop){
+  const el = document.getElementById(id);
+  const on  = e => { e.preventDefault(); touch[prop] = true;  touch.active = true; };
+  const off = e => { e.preventDefault(); touch[prop] = false; };
+  el.addEventListener('pointerdown', on);
+  el.addEventListener('pointerup', off);
+  el.addEventListener('pointercancel', off);
+  el.addEventListener('pointerleave', off);
+}
+bindTouch('btnL','l'); bindTouch('btnR','r'); bindTouch('btnB','b');
+
+document.getElementById('startBtn').onclick = () => {
+  initAudio(); if (AC && AC.state === 'suspended') AC.resume();
+  document.getElementById('menu').classList.add('hidden');
+  resetGame();
+};
+document.getElementById('restartBtn').onclick = () => {
+  document.getElementById('over').classList.add('hidden');
+  resetGame();
+};
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+/* ============================== LOOP ============================== */
+let lastTick = -1;
+function update(dt){
+  const accel = keys['arrowup'] || keys['w'] || touch.active;
+  const brake = keys['arrowdown'] || keys['s'] || touch.b;
+  const left  = keys['arrowleft'] || keys['a'] || touch.l;
+  const right = keys['arrowright']|| keys['d'] || touch.r;
+
+  if (crashTimer > 0) crashTimer -= dt;
+  if (brake) speed -= 90 * dt;
+  else if (accel && crashTimer <= 0) speed += 42 * dt;
+  else speed -= 14 * dt;
+  speed = Math.max(0, Math.min(MAX_SPEED, speed));
+
+  const offRoad = Math.abs(px) > ROAD_HALF + 0.6;
+  if (offRoad && speed > 45){ speed -= 60 * dt; shake = Math.max(shake, 0.25); }
+
+  curveTimer -= dt;
+  if (curveTimer <= 0){
+    curveTarget = (Math.random() < 0.35) ? 0 : (Math.random()*2 - 1) * 1.05;
+    curveTimer = 4 + Math.random()*5;
+  }
+  curve += (curveTarget - curve) * Math.min(1, dt * 1.6);   // transição mais brusca entre curvas
+
+  const grip  = weather === 'ice' ? 0.45 : 1;
+  const steer = (left ? -1 : 0) + (right ? 1 : 0);
+  px += steer * (7 + speed * 0.10) * grip * dt;
+  px -= curve * speed * dt * 0.028 * (weather === 'ice' ? 1.7 : 1);
+  px = Math.max(-ROAD_HALF - 3.5, Math.min(ROAD_HALF + 3.5, px));
+
+  const dz = speed * dt;
+  km += dz / 500;                                  // escala arbitrária p/ "km"
+  for (const s of segments){
+    s.position.z += dz;
+    if (s.position.z > SEG_LEN) s.position.z -= N_SEG * SEG_LEN;
+    const d = -s.position.z;
+    s.position.x = curveX(d);
+    s.rotation.y = Math.atan(2 * curve * CURVE_K * Math.max(0, d));
+  }
+  for (const p of props){
+    p.position.z += dz;
+    if (p.position.z > 20) p.position.z -= 26 * 72;
+    const d = -p.position.z;
+    p.position.x = p.userData.side * p.userData.off + curveX(d);
+  }
+
+  // tráfego
+  for (const v of traffic){
+    const u = v.userData;
+    if (!u.active) continue;
+    const prev = u.z;
+    u.z += (speed - u.speed) * dt;
+    if (u.z > 40){ respawnVehicle(v); continue; }
+    if (u.z < -980) u.z = -980;
+
+    if (prev < 0 && u.z >= 0 && !u.counted){
+      u.counted = true;
+      totalPassed++;
+      if (carsLeft > 0){ carsLeft--; sndPass(); if (carsLeft === 0) sndDay(); }
+      else sndPass();
+    } else if (prev >= 0 && u.z < 0 && u.counted){
+      u.counted = false;
+      totalPassed = Math.max(0, totalPassed - 1);
+      carsLeft++;
+    }
+
+    const d = -u.z;
+    v.position.set(u.lane + curveX(d), 0, u.z);
+    v.rotation.y = Math.atan(2 * curve * CURVE_K * Math.max(0, d));
+
+    // colisão (dimensões por tipo de veículo) — bater NÃO encerra o jogo, só custa tempo
+    if (Math.abs(u.z) < u.halfLen + 1.6 && Math.abs(v.position.x - px) < u.halfWid + 1.05 && speed > 8){
+      speed = 12; crashTimer = 0.9; shake = 0.9;
+      u.z -= 30 + u.halfLen * 4; sndCrash();
+    }
+  }
+
+  // contador regressivo do dia
+  dayTime += dt / DAY_LENGTH;
+  const timeLeft = Math.max(0, (1 - dayTime) * DAY_LENGTH);
+  if (dayTime >= 1){
+    dayTime -= 1;
+    lastTick = -1;
+    nextDay();                                     // reinicia contador do dia e a meta
+    if (state !== 'play') return;
+  }
+  // tique-taque nos últimos 10s se a meta não foi batida
+  const sec = Math.ceil(timeLeft);
+  if (carsLeft > 0 && sec <= 10 && sec !== lastTick){ lastTick = sec; sndTick(); }
+
+  const sk = skyAt(dayTime);
+  scene.background = sk.sky;
+  const fogC = weather === 'fog' ? sk.fog.clone().lerp(new THREE.Color(0xffffff), 0.25) : sk.fog;
+  scene.fog.color.copy(fogC);
+  if (weather === 'fog'){ scene.fog.near = 25; scene.fog.far = 220; }
+  else { scene.fog.near = 150; scene.fog.far = 850; }
+  sunLight.intensity = sk.sun;
+  hemiLight.intensity = sk.amb;
+
+  const ang = dayTime * Math.PI * 2;
+  const elev = Math.sin(ang);
+  sunMesh.position.set(-350, elev * 500 + 40, -1300);
+  sunMesh.visible = elev > -0.08;
+  moonMesh.position.set(300, -elev * 450 + 40, -1300);
+  moonMesh.visible = -elev > -0.05;
+
+  headLight.intensity = isNight() ? 2.4 : 0;
+  headLight.position.set(px, 1.4, -1);
+  headTarget.position.set(px + curve * 8, 0.5, -60);
+
+  player.position.x = px;
+  player.rotation.y = -steer * 0.14;
+  player.rotation.z = -steer * 0.05;
+
+  shake = Math.max(0, shake - dt * 1.6);
+  const sx = (Math.random()-0.5) * shake, sy = (Math.random()-0.5) * shake * 0.6;
+  camera.position.x += ((px * 0.7 + sx) - camera.position.x) * Math.min(1, dt*5);
+  camera.position.y = 4.4 + sy;
+  camera.lookAt(px * 0.85 + curve * 6, 1.2, -40);
+
+  if (engGain){
+    engGain.gain.value = state === 'play' ? 0.028 : 0;
+    engOsc.frequency.value = 55 + speed * 1.5 + (offRoad ? Math.random()*30 : 0);
+  }
+
+  /* HUD */
+  document.getElementById('speed').textContent = `${Math.round(speed * SPEED_DISPLAY)} km/h`;
+  document.getElementById('dayLbl').textContent = `DIA ${day}`;
+
+  const mm = String(Math.floor(timeLeft / 60)).padStart(2,'0');
+  const ss = String(Math.floor(timeLeft % 60)).padStart(2,'0');
+  const tEl = document.getElementById('timer');
+  tEl.textContent = `${mm}:${ss}`;
+  tEl.classList.toggle('low', carsLeft > 0 && timeLeft <= 15);
+
+  const cEl = document.getElementById('counter');
+  cEl.innerHTML = carsLeft > 0 ? `FALTAM ${carsLeft}` : `<span id="goal">✓ META! SIGA ATÉ O FIM DO DIA</span>`;
+
+  document.getElementById('subhud').innerHTML =
+    `ULTRAPASSAGENS ${totalPassed}<br>${km.toFixed(1)} km`;
+}
+
+function loop(){
+  requestAnimationFrame(loop);
+  const dt = Math.min(0.05, clock.getDelta());
+  if (state === 'play') update(dt);
+  renderer.render(scene, camera);
+}
+
+buildWorld();
+clock = new THREE.Clock();
+document.getElementById('menuRecord').textContent = best.label();
+loop();
+})();
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./service-worker.js');
+  });
+}
+</script>
+</body>
+</html>
