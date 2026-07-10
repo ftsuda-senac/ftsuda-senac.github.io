@@ -1,4 +1,4 @@
-const CACHE_NAME = "columns3d-v5";
+const CACHE_NAME = "columns3d-v6";
 const ASSETS = [
   "./",
   "./index.html",

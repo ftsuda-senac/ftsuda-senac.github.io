@@ -58,12 +58,14 @@
 
 <div id="touch">
   <div class="stack">
-    <button id="btnRot">⟳</button>
     <button id="btnL">◀</button>
+    <button id="btnRotDown">⤵</button>
+    <button id="btnD">▼</button>
   </div>
   <div class="stack">
-    <button id="btnD">▼</button>
     <button id="btnR">▶</button>
+    <button id="btnRotUp">⤴</button>
+    <button id="btnD2">▼</button>
   </div>
 </div>
 
@@ -77,7 +79,7 @@
        Reações em cadeia valem pontos em dobro!<br>
        A <b>joia mágica</b> ✨ elimina todas as joias<br>
        da cor em que ela pousar.<br><br>
-       ◀ ▶ mover &nbsp;·&nbsp; ⟳ (↑ ou espaço) trocar cores<br>
+       ◀ ▶ mover &nbsp;·&nbsp; ⤴ ⤵ (↑ ou espaço) trocar cores<br>
        ▼ acelerar queda &nbsp;·&nbsp; P pausar</p>
     <div class="record" id="menuRecord"></div>
     <button class="btn" id="btnStart">INICIAR</button>
@@ -393,10 +395,11 @@ function move(d){
   piece.col = nc;
   sndMove();
 }
-function cycle(){
+function cycle(dir = 1){
   if (state !== 'play') return;
   const g = piece.gems;
-  piece.gems = [g[2], g[0], g[1]];
+  // dir=1: joias sobem (baixo→cima) · dir=-1: joias descem (cima→baixo)
+  piece.gems = dir === 1 ? [g[2], g[0], g[1]] : [g[1], g[2], g[0]];
   for (let i = 0; i < 3; i++) pieceGroup.children[i].userData.v = piece.gems[i];
   if (!piece.magic)
     for (let i = 0; i < 3; i++) {
@@ -467,7 +470,7 @@ function layout(){
   const portrait = aspect < 0.95;
   let cx, cy, halfW, halfH;
   if (portrait) {
-    previewGroup.position.set((COLS - 1) / 2 + 1.6, ROWS + 1.4, 0);
+    previewGroup.position.set((COLS - 1) / 2, ROWS + 1.4, 0);
     cx = (COLS - 1) / 2; cy = ROWS / 2 + 1.0;
     halfW = COLS / 2 + 1.4; halfH = ROWS / 2 + 2.6;
   } else {
@@ -529,8 +532,10 @@ function bindTouch(id, down, up){
 }
 bindTouch('btnL', () => move(-1));
 bindTouch('btnR', () => move(1));
-bindTouch('btnRot', cycle);
+bindTouch('btnRotDown', () => cycle(-1));
+bindTouch('btnRotUp', () => cycle(1));
 bindTouch('btnD', () => softDrop = true, () => softDrop = false);
+bindTouch('btnD2', () => softDrop = true, () => softDrop = false);
 
 /* ===== Loop principal ===== */
 let last = performance.now();
