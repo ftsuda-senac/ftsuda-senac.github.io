@@ -165,8 +165,16 @@ let dayTime = 0, day = 1, carsLeft = 30;
 let weather = 'clear';
 let crashTimer = 0, shake = 0;
 let totalPassed = 0, km = 0;
+let travel = 0;                        // distância total percorrida (para o relevo)
 
 const keys = {};
+
+/* ============================== RELEVO (subidas e descidas) ============================== */
+function hillH(t){
+  return 14 * Math.sin(t * 0.0062) + 8 * Math.sin(t * 0.0029 + 1.7);
+}
+const yAt = d => hillH(travel + d) - hillH(travel);
+const slopeAt = d => (hillH(travel + d + 6) - hillH(travel + d - 6)) / 12;
 
 /* ============================== ÁUDIO ============================== */
 let AC = null, engOsc = null, engGain = null;
@@ -319,15 +327,16 @@ function buildWorld(){
   scene.add(sunLight);
 
   grassMat = new THREE.MeshLambertMaterial({ color: 0x3f7a2e });
+  /* chão distante rebaixado: a pista sobe e desce sobre ele sem ser engolida */
   const ground = new THREE.Mesh(new THREE.PlaneGeometry(5000, 5000), grassMat);
-  ground.rotation.x = -Math.PI/2; ground.position.y = -0.06; ground.position.z = -800;
+  ground.rotation.x = -Math.PI/2; ground.position.y = -38; ground.position.z = -800;
   scene.add(ground);
 
   const mMat = new THREE.MeshLambertMaterial({ color: 0x4a5a4a });
   for (let i = 0; i < 9; i++){
     const h = 120 + Math.random()*180;
     const m = new THREE.Mesh(new THREE.ConeGeometry(120 + Math.random()*120, h, 4), mMat);
-    m.position.set(-900 + i*230 + (Math.random()*80-40), h/2 - 10, -1500 - Math.random()*300);
+    m.position.set(-900 + i*230 + (Math.random()*80-40), h/2 - 48, -1500 - Math.random()*300);
     m.rotation.y = Math.random();
     scene.add(m);
   }
@@ -344,6 +353,9 @@ function buildWorld(){
 
   for (let i = 0; i < N_SEG; i++){
     const g = new THREE.Group();
+    /* faixa de grama larga por segmento: o acostamento acompanha o relevo */
+    const lawn = new THREE.Mesh(new THREE.PlaneGeometry(90, SEG_LEN + 0.6), grassMat);
+    lawn.rotation.x = -Math.PI/2; lawn.position.y = -0.05; g.add(lawn);
     const plane = new THREE.Mesh(new THREE.PlaneGeometry(ROAD_W + 1.6, SEG_LEN + 0.4), roadMat);
     plane.rotation.x = -Math.PI/2; g.add(plane);
     for (const x of [-2.5, 2.5]){
@@ -464,7 +476,7 @@ function gameOver(){
 function resetGame(){
   speed = 0; px = 0; curve = 0; curveTarget = 0; curveTimer = 0;
   dayTime = 0; day = 1; carsLeft = QUOTA(1); weather = 'clear';
-  crashTimer = 0; shake = 0; totalPassed = 0; km = 0;
+  crashTimer = 0; shake = 0; totalPassed = 0; km = 0; travel = 0;
   applyWeather();
   traffic.forEach((v, i) => { v.userData.z = -200 - i * 80; respawnVehicle(v, false); });
   applyDifficulty();
@@ -515,6 +527,8 @@ function update(dt){
   if (brake) speed -= 90 * dt;
   else if (accel && crashTimer <= 0) speed += 42 * dt;
   else speed -= 14 * dt;
+  /* subida segura o carro; descida embala */
+  speed -= slopeAt(0) * 26 * dt;
   speed = Math.max(0, Math.min(MAX_SPEED, speed));
 
   const offRoad = Math.abs(px) > ROAD_HALF + 0.6;
@@ -537,19 +551,23 @@ function update(dt){
   px = Math.max(-ROAD_HALF - 3.5, Math.min(ROAD_HALF + 3.5, px));
 
   const dz = speed * dt;
+  travel += dz;
   km += dz / 500;                                  // escala arbitrária p/ "km"
   for (const s of segments){
     s.position.z += dz;
     if (s.position.z > SEG_LEN) s.position.z -= N_SEG * SEG_LEN;
     const d = -s.position.z;
     s.position.x = curveX(d);
+    s.position.y = yAt(d);
     s.rotation.y = Math.atan(2 * curve * CURVE_K * Math.max(0, d));
+    s.rotation.x = Math.atan(slopeAt(d));
   }
   for (const p of props){
     p.position.z += dz;
     if (p.position.z > 20) p.position.z -= 26 * 72;
     const d = -p.position.z;
     p.position.x = p.userData.side * p.userData.off + curveX(d);
+    p.position.y = yAt(d);
   }
 
   // tráfego
@@ -573,8 +591,9 @@ function update(dt){
     }
 
     const d = -u.z;
-    v.position.set(u.lane + curveX(d), 0, u.z);
+    v.position.set(u.lane + curveX(d), yAt(d), u.z);
     v.rotation.y = Math.atan(2 * curve * CURVE_K * Math.max(0, d));
+    v.rotation.x = Math.atan(slopeAt(d));
 
     // colisão (dimensões por tipo de veículo) — bater NÃO encerra o jogo, só custa tempo
     if (Math.abs(u.z) < u.halfLen + 1.6 && Math.abs(v.position.x - px) < u.halfWid + 1.05 && speed > 8){
@@ -614,17 +633,18 @@ function update(dt){
 
   headLight.intensity = isNight() ? 2.4 : 0;
   headLight.position.set(px, 1.4, -1);
-  headTarget.position.set(px + curve * 8, 0.5, -60);
+  headTarget.position.set(px + curve * 8, 0.5 + yAt(60), -60);
 
   player.position.x = px;
   player.rotation.y = -steer * 0.14;
   player.rotation.z = -steer * 0.05;
+  player.rotation.x = Math.atan(slopeAt(0));       // empina na subida, mergulha na descida
 
   shake = Math.max(0, shake - dt * 1.6);
   const sx = (Math.random()-0.5) * shake, sy = (Math.random()-0.5) * shake * 0.6;
   camera.position.x += ((px * 0.7 + sx) - camera.position.x) * Math.min(1, dt*5);
   camera.position.y = 4.4 + sy;
-  camera.lookAt(px * 0.85 + curve * 6, 1.2, -40);
+  camera.lookAt(px * 0.85 + curve * 6, 1.2 + yAt(45) * 0.55, -40);
 
   if (engGain){
     engGain.gain.value = state === 'play' ? 0.028 : 0;

@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>FROGGER 3D</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#000000">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Frogger 3D">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<style>
+  :root{
+    --hud:#ffd24a; --hud-dim:#b8912a; --panel:rgba(8,10,20,.72); --alert:#ff5544;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:"Courier New",ui-monospace,monospace}
+  #c{display:block;width:100%;height:100%;touch-action:none}
+  .hud{position:fixed;left:0;right:0;top:0;display:flex;justify-content:space-between;align-items:flex-start;
+       gap:8px;padding:12px 14px;color:var(--hud);text-shadow:0 2px 0 #000;pointer-events:none;user-select:none;z-index:5;
+       flex-wrap:wrap}
+  .hud .box{background:var(--panel);border:2px solid var(--hud-dim);padding:6px 12px;letter-spacing:2px;font-weight:bold;
+            font-size:clamp(12px,2.6vw,18px)}
+  #timer.low{color:var(--alert);border-color:var(--alert);animation:blink .6s steps(2) infinite}
+  @keyframes blink{50%{opacity:.35}}
+  #msg{position:fixed;top:44%;left:50%;transform:translate(-50%,-50%);color:#7CFC00;font-weight:bold;
+       letter-spacing:4px;text-shadow:0 2px 0 #000,0 0 18px #7CFC00;z-index:5;pointer-events:none;
+       font-size:clamp(20px,6vw,44px);opacity:0;transition:opacity .2s}
+  .overlay{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;
+           overflow-y:auto;-webkit-overflow-scrolling:touch;
+           background:rgba(0,0,10,.78);color:var(--hud);z-index:10;text-align:center;padding:24px}
+  .overlay-inner{margin:auto 0;max-width:660px;width:100%;padding:16px 0}
+  .overlay h1{font-size:clamp(28px,8vw,64px);letter-spacing:8px;text-shadow:4px 4px 0 #1a7a2e,8px 8px 0 #000;margin-bottom:16px}
+  .overlay p{color:#cfd6ff;line-height:1.8;letter-spacing:1px;font-size:clamp(12px,2.4vw,16px)}
+  .overlay .record{margin-top:14px;color:#7CFC00;letter-spacing:2px;font-weight:bold;font-size:clamp(13px,2.8vw,18px)}
+  .overlay .btn{margin-top:24px;background:#1a7a2e;color:#fff;border:3px solid #ffd24a;padding:14px 34px;
+                font-family:inherit;font-size:clamp(15px,3vw,20px);letter-spacing:4px;cursor:pointer;font-weight:bold}
+  .overlay .btn:active{transform:scale(.96)}
+  .hidden{display:none !important}
+  @media (max-height:480px){
+    .overlay{padding:14px}
+    .overlay-inner{padding:8px 0}
+    .overlay h1{font-size:clamp(22px,7vw,40px);letter-spacing:5px;margin-bottom:10px}
+    .overlay p{line-height:1.45;font-size:clamp(11px,2vw,14px)}
+    .overlay .record{margin-top:8px}
+    .overlay .btn{margin-top:14px;padding:10px 26px;font-size:clamp(13px,2.6vw,17px)}
+  }
+  #touch{position:fixed;inset:auto 0 0 0;display:none;justify-content:space-between;align-items:flex-end;
+         padding:10px 14px calc(env(safe-area-inset-bottom, 0px) + 46px);z-index:6;pointer-events:none}
+  #touch button{width:78px;height:78px;border-radius:14px;border:2px solid var(--hud-dim);
+                background:var(--panel);color:var(--hud);font-size:28px;font-weight:bold;touch-action:none;
+                pointer-events:auto;user-select:none;-webkit-user-select:none}
+  #touch .mid{display:flex;gap:12px}
+  @media (pointer:coarse){ #touch{display:flex} }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div class="hud">
+  <div class="box" id="scoreLbl">PONTOS 0</div>
+  <div class="box" id="hiLbl">RECORDE 0</div>
+  <div class="box" id="levelLbl">NÍVEL 1</div>
+  <div class="box" id="livesLbl">VIDAS ●●●</div>
+  <div class="box" id="timer">40</div>
+</div>
+<div id="msg"></div>
+
+<div id="touch">
+  <button id="btnL">◀</button>
+  <div class="mid"><button id="btnU">▲</button><button id="btnD">▼</button></div>
+  <button id="btnR">▶</button>
+</div>
+
+<div class="overlay" id="menu">
+  <div class="overlay-inner">
+    <h1>FROGGER 3D</h1>
+    <p>
+      Leve o sapo até as <b>5 tocas</b> no topo da tela.<br>
+      Atravesse a avenida sem ser atropelado e cruze o rio<br>
+      pulando sobre <b>troncos e tartarugas</b> — cair na água é fatal!<br>
+      Cuidado: algumas tartarugas <b>mergulham</b>…<br>
+      Pegue a <b>mosca</b> ✚ que aparece nas tocas para pontos extras.<br>
+      Complete as 5 tocas para avançar de nível.<br><br>
+      ▲ ▼ ◀ ▶ pular (ou WASD) &nbsp;·&nbsp; P pausar<br>
+      No celular: use os botões ou <b>deslize o dedo</b> na tela.
+    </p>
+    <div class="record" id="menuRecord"></div>
+    <button class="btn" id="startBtn">INICIAR</button>
+  </div>
+</div>
+
+<div class="overlay hidden" id="over">
+  <div class="overlay-inner">
+    <h1>FIM DE JOGO</h1>
+    <p id="overMsg"></p>
+    <div class="record" id="overRecord"></div>
+    <button class="btn" id="restartBtn">JOGAR DE NOVO</button>
+  </div>
+</div>
+
+<div class="overlay hidden" id="pause">
+  <div class="overlay-inner">
+    <h1>PAUSA</h1>
+    <p>Pressione P ou toque no botão para continuar.</p>
+    <button class="btn" id="resumeBtn">CONTINUAR</button>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(() => {
+'use strict';
+
+/* ============================== CONFIG ============================== */
+const CELL = 2;                       // tamanho de cada casa do tabuleiro
+const COLS = 13;                      // colunas do tabuleiro
+const BOARD_HALF = COLS * CELL / 2;   // meia-largura jogável (13)
+const WRAP = BOARD_HALF + 9;          // onde os veículos/troncos dão a volta (borda das faixas)
+const SPAN = WRAP * 2;
+const TIME_MAX = 40;                  // segundos por tentativa
+const HOP_T = 0.13;                   // duração do pulo (s)
+const FLOAT_Y = 0.32;                 // altura do sapo sobre troncos/tartarugas
+const LIVES_START = 3;
+const HISCORE_KEY = 'frogger3d.hiscore';
+
+const colX = c => (c - (COLS - 1) / 2) * CELL;
+const rowZ = r => -r * CELL;
+
+/* faixas da avenida: linha, direção, velocidade base, quantidade e tipo */
+const ROAD_LANES = [
+  { row: 1, dir:  1, speed: 2.1, count: 3, type: 'car',   color: 0xffe33b },
+  { row: 2, dir: -1, speed: 2.9, count: 3, type: 'car',   color: 0xdddddd },
+  { row: 3, dir:  1, speed: 2.4, count: 2, type: 'truck', color: 0xcc3322 },
+  { row: 4, dir: -1, speed: 4.4, count: 2, type: 'sport', color: 0x3b8cff },
+  { row: 5, dir:  1, speed: 1.9, count: 2, type: 'truck', color: 0xbbbbcc },
+];
+/* faixas do rio: troncos e grupos de tartarugas */
+const RIVER_LANES = [
+  { row: 7,  dir: -1, speed: 2.1, kind: 'turtle', count: 4, size: 3 },
+  { row: 8,  dir:  1, speed: 1.6, kind: 'log',    count: 3, len: 5.5 },
+  { row: 9,  dir:  1, speed: 3.1, kind: 'log',    count: 2, len: 9 },
+  { row: 10, dir: -1, speed: 2.5, kind: 'turtle', count: 4, size: 2 },
+  { row: 11, dir:  1, speed: 2.0, kind: 'log',    count: 3, len: 7 },
+];
+const HOME_X = [-10, -5, 0, 5, 10];   // posição das 5 tocas
+const speedMul = () => Math.min(2.1, 1 + (level - 1) * 0.18);
+
+/* ============================== PLACAR PERSISTENTE ============================== */
+const _mem = {};
+const store = {
+  get(k){ try { return localStorage.getItem(k); } catch(e){ return _mem[k] ?? null; } },
+  set(k, v){ try { localStorage.setItem(k, v); } catch(e){ _mem[k] = String(v); } },
+};
+let hiscore = parseInt(store.get(HISCORE_KEY) || '0', 10);
+
+/* ============================== ESTADO ============================== */
+let scene, camera, renderer, clock;
+let vehicles = [], floats = [], homes = [], homeFrogs = [];
+let frogMesh, flyMesh, waterMat;
+let state = 'menu';
+let score = 0, level = 1, lives = LIVES_START;
+let timeLeft = TIME_MAX, lastTick = -1, maxRow = 0;
+let deathTimer = 0, deathType = '';
+let fly = { slot: -1, timer: 5 };
+let msgTimer = 0;
+
+const frog = {
+  x: 0, row: 0, riding: false,
+  hopping: false, hopT: 0,
+  fromX: 0, fromZ: 0, fromY: 0,
+  toX: 0, toRow: 0, toY: 0,
+  face: 0, dead: false,
+};
+
+/* ============================== ÁUDIO ============================== */
+let AC = null;
+function initAudio(){
+  if (AC) return;
+  try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){ AC = null; }
+}
+document.addEventListener('visibilitychange', () => {
+  if (!AC) return;
+  if (document.hidden){ if (AC.state === 'running') AC.suspend(); }
+  else { if (AC.state === 'suspended') AC.resume(); }
+});
+function blip(freq, dur, vol, type, slide){
+  if (!AC) return;
+  const o = AC.createOscillator(), g = AC.createGain();
+  o.type = type || 'square'; o.frequency.value = freq;
+  if (slide) o.frequency.exponentialRampToValueAtTime(slide, AC.currentTime + dur);
+  g.gain.setValueAtTime(vol, AC.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, AC.currentTime + dur);
+  o.connect(g).connect(AC.destination);
+  o.start(); o.stop(AC.currentTime + dur);
+}
+const sndHop    = () => blip(520, .07, .05, 'square', 780);
+const sndSplash = () => blip(420, .35, .12, 'sawtooth', 60);
+const sndCrash  = () => { blip(95, .35, .16, 'sawtooth'); blip(60, .45, .13, 'square'); };
+const sndBuzz   = () => blip(110, .25, .10, 'sawtooth');
+const sndHome   = () => { blip(660,.1,.06); setTimeout(()=>blip(880,.1,.06),110); setTimeout(()=>blip(1180,.16,.06),220); };
+const sndLevel  = () => { [523,659,784,1046].forEach((f,i)=>setTimeout(()=>blip(f,.14,.07),i*130)); };
+const sndFly    = () => blip(1400, .12, .06, 'square', 900);
+const sndTick   = () => blip(1200, .05, .04);
+
+/* ============================== MODELOS ============================== */
+function makeFrogModel(bright){
+  const g = new THREE.Group();
+  const green = new THREE.MeshLambertMaterial({ color: bright ? 0x66ff66 : 0x2ecc40 });
+  const dark  = new THREE.MeshLambertMaterial({ color: 0x1a7a2e });
+  const body = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.5, 1.25), green);
+  body.position.y = 0.35; g.add(body);
+  const belly = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.2, 0.95),
+    new THREE.MeshLambertMaterial({ color: 0xcfe89a }));
+  belly.position.y = 0.14; g.add(belly);
+  const head = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.4, 0.5), green);
+  head.position.set(0, 0.55, -0.62); g.add(head);
+  const eyeW = new THREE.MeshLambertMaterial({ color: 0xffffff });
+  const eyeB = new THREE.MeshBasicMaterial({ color: 0x111111 });
+  for (const sx of [-0.32, 0.32]){
+    const e = new THREE.Mesh(new THREE.SphereGeometry(0.17, 8, 8), eyeW);
+    e.position.set(sx, 0.82, -0.62); g.add(e);
+    const p = new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 6), eyeB);
+    p.position.set(sx, 0.86, -0.74); g.add(p);
+  }
+  for (const [sx, sz] of [[-0.62,-0.35],[0.62,-0.35],[-0.62,0.45],[0.62,0.45]]){
+    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.22, 0.6), dark);
+    leg.position.set(sx, 0.12, sz); g.add(leg);
+  }
+  return g;
+}
+
+function makeVehicle(type, color){
+  /* veículos orientados no eixo X (frente em +X) */
+  const g = new THREE.Group();
+  const bodyMat  = new THREE.MeshLambertMaterial({ color });
+  const glassMat = new THREE.MeshLambertMaterial({ color: 0x223344 });
+  const darkMat  = new THREE.MeshLambertMaterial({ color: 0x14141c });
+  let halfLen = 1.5;
+  function wheels(xs, size){
+    for (const sz of [-0.75, 0.75]) for (const sx of xs){
+      const w = new THREE.Mesh(new THREE.BoxGeometry(size * 1.2, size, 0.35), darkMat);
+      w.position.set(sx, size / 2, sz); g.add(w);
+    }
+  }
+  if (type === 'truck'){
+    halfLen = 2.6;
+    const box = new THREE.Mesh(new THREE.BoxGeometry(3.6, 1.7, 1.7), bodyMat);
+    box.position.set(-0.6, 1.15, 0); g.add(box);
+    const cab = new THREE.Mesh(new THREE.BoxGeometry(1.3, 1.15, 1.6),
+      new THREE.MeshLambertMaterial({ color: 0xdddddd }));
+    cab.position.set(1.85, 0.85, 0); g.add(cab);
+    const glass = new THREE.Mesh(new THREE.BoxGeometry(1.32, 0.45, 1.4), glassMat);
+    glass.position.set(1.86, 1.15, 0); g.add(glass);
+    wheels([-1.8, 0.2, 1.8], 0.62);
+  } else if (type === 'sport'){
+    halfLen = 1.4;
+    const body = new THREE.Mesh(new THREE.BoxGeometry(2.7, 0.42, 1.35), bodyMat);
+    body.position.y = 0.42; g.add(body);
+    const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.36, 1.05), glassMat);
+    cabin.position.set(-0.15, 0.78, 0); g.add(cabin);
+    const wing = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.1, 1.25), bodyMat);
+    wing.position.set(-1.25, 0.78, 0); g.add(wing);
+    wheels([-0.9, 0.9], 0.45);
+  } else {
+    const body = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.55, 1.4), bodyMat);
+    body.position.y = 0.5; g.add(body);
+    const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.5, 1.15), bodyMat);
+    cabin.position.set(-0.15, 1.0, 0); g.add(cabin);
+    const glass = new THREE.Mesh(new THREE.BoxGeometry(1.42, 0.32, 1.02), glassMat);
+    glass.position.set(-0.15, 1.02, 0); g.add(glass);
+    wheels([-0.9, 0.9], 0.5);
+  }
+  /* faróis e lanternas para o clima noturno */
+  const headMat = new THREE.MeshBasicMaterial({ color: 0xfff2b0 });
+  const tailMat = new THREE.MeshBasicMaterial({ color: 0xff2222 });
+  for (const sz of [-0.5, 0.5]){
+    const h = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.2, 0.3), headMat);
+    h.position.set(halfLen + 0.02, 0.55, sz); g.add(h);
+    const t = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.18, 0.28), tailMat);
+    t.position.set(-halfLen - 0.02, 0.55, sz); g.add(t);
+  }
+  g.userData.halfLen = halfLen;
+  return g;
+}
+
+function makeLog(len){
+  const g = new THREE.Group();
+  const wood = new THREE.MeshLambertMaterial({ color: 0x8a5a2a });
+  const cyl = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, len, 10), wood);
+  cyl.rotation.z = Math.PI / 2; g.add(cyl);
+  for (const sx of [-len/2, len/2]){
+    const cap = new THREE.Mesh(new THREE.CircleGeometry(0.55, 10),
+      new THREE.MeshLambertMaterial({ color: 0xc9a06a }));
+    cap.position.x = sx + (sx > 0 ? 0.011 : -0.011);
+    cap.rotation.y = sx > 0 ? Math.PI/2 : -Math.PI/2;
+    g.add(cap);
+  }
+  g.userData.halfLen = len / 2;
+  return g;
+}
+
+function makeTurtles(n, dir){
+  const g = new THREE.Group();
+  const shell = new THREE.MeshLambertMaterial({ color: 0x1a7a2e });
+  const skin  = new THREE.MeshLambertMaterial({ color: 0x37e05a });
+  const gap = 1.35;
+  for (let i = 0; i < n; i++){
+    const cx = (i - (n - 1) / 2) * gap;
+    const s = new THREE.Mesh(new THREE.SphereGeometry(0.62, 10, 8), shell);
+    s.scale.y = 0.5; s.position.set(cx, 0.1, 0); g.add(s);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 6), skin);
+    head.position.set(cx + dir * 0.66, 0.18, 0);   // cabeça aponta na direção do nado
+    g.add(head);
+  }
+  g.userData.halfLen = (n * gap) / 2 + 0.1;
+  return g;
+}
+
+function makeFly(){
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.28, 8, 6),
+    new THREE.MeshLambertMaterial({ color: 0x222222 }));
+  body.position.y = 0.5; g.add(body);
+  const wingMat = new THREE.MeshBasicMaterial({ color: 0xbfd8ff, transparent: true, opacity: 0.7, side: THREE.DoubleSide });
+  for (const sx of [-0.3, 0.3]){
+    const w = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.28), wingMat);
+    w.position.set(sx, 0.72, 0); w.rotation.x = -Math.PI/2; w.rotation.z = sx > 0 ? -0.4 : 0.4;
+    g.add(w);
+  }
+  return g;
+}
+
+/* ============================== CENA ============================== */
+function buildWorld(){
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x0a1030);
+  scene.fog = new THREE.Fog(0x0a1030, 55, 130);
+
+  camera = new THREE.PerspectiveCamera(55, innerWidth/innerHeight, 0.1, 300);
+
+  renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('c'), antialias: true });
+  renderer.setSize(innerWidth, innerHeight);
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+
+  scene.add(new THREE.HemisphereLight(0xbfd4ff, 0x1a2a1a, 0.85));
+  const dir = new THREE.DirectionalLight(0xfff3d0, 0.75);
+  dir.position.set(-30, 60, 20);
+  scene.add(dir);
+
+  /* estrelas */
+  const starGeo = new THREE.BufferGeometry();
+  const pts = [];
+  for (let i = 0; i < 220; i++)
+    pts.push((Math.random()*2-1)*140, 25 + Math.random()*70, -40 - Math.random()*90);
+  starGeo.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+  scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xdfe6ff, size: 0.5 })));
+
+  /* lua */
+  const moon = new THREE.Mesh(new THREE.SphereGeometry(4, 16, 16),
+    new THREE.MeshBasicMaterial({ color: 0xdfe6ff }));
+  moon.position.set(28, 42, -95);
+  scene.add(moon);
+
+  /* faixas do tabuleiro */
+  const grassMat = new THREE.MeshLambertMaterial({ color: 0x2e6b2e });
+  const roadMat  = new THREE.MeshLambertMaterial({ color: 0x33333e });
+  waterMat = new THREE.MeshLambertMaterial({ color: 0x1a3a8a });
+  const STRIP_W = 44;
+  for (let r = 0; r <= 12; r++){
+    let mat = grassMat, y = 0;
+    if (r >= 1 && r <= 5) mat = roadMat;
+    if (r >= 7 && r <= 11){ mat = waterMat; y = -0.42; }
+    const p = new THREE.Mesh(new THREE.PlaneGeometry(STRIP_W, CELL + 0.02), mat);
+    p.rotation.x = -Math.PI/2;
+    p.position.set(0, y, rowZ(r));
+    scene.add(p);
+  }
+  /* linhas tracejadas entre as faixas da avenida */
+  const dashMat = new THREE.MeshLambertMaterial({ color: 0xd8d8d8 });
+  for (let r = 1; r < 5; r++){
+    for (let x = -BOARD_HALF; x < BOARD_HALF; x += 2.4){
+      const d = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.02, 0.16), dashMat);
+      d.position.set(x + 0.6, 0.01, rowZ(r) - CELL/2);
+      scene.add(d);
+    }
+  }
+  /* calçadas: leve destaque nas linhas seguras */
+  const curbMat = new THREE.MeshLambertMaterial({ color: 0x3f7a2e });
+  for (const r of [0, 6]){
+    const p = new THREE.Mesh(new THREE.BoxGeometry(2 * BOARD_HALF + 2, 0.1, CELL - 0.3), curbMat);
+    p.position.set(0, 0.01, rowZ(r));
+    scene.add(p);
+  }
+
+  /* linha das tocas */
+  const bushMat = new THREE.MeshLambertMaterial({ color: 0x1a5a22 });
+  const bayMat  = new THREE.MeshLambertMaterial({ color: 0x0a1030 });
+  const back = new THREE.Mesh(new THREE.BoxGeometry(STRIP_W, 1.6, CELL + 0.02), bushMat);
+  back.position.set(0, 0.4, rowZ(13));
+  scene.add(back);
+  for (let i = 0; i < 5; i++){
+    const bay = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.06, CELL - 0.2), bayMat);
+    bay.position.set(HOME_X[i], 0.03, rowZ(12));
+    scene.add(bay);
+    homes.push(false);
+    const statue = makeFrogModel(true);
+    statue.position.set(HOME_X[i], 0.1, rowZ(12));
+    statue.visible = false;
+    scene.add(statue);
+    homeFrogs.push(statue);
+  }
+  /* arbustos entre as tocas */
+  for (let x = -BOARD_HALF - 6; x <= BOARD_HALF + 6; x += 1.3){
+    if (HOME_X.some(hx => Math.abs(x - hx) < 1.7)) continue;
+    const b = new THREE.Mesh(new THREE.SphereGeometry(0.75, 7, 6), bushMat);
+    b.scale.y = 0.8;
+    b.position.set(x, 0.35, rowZ(12));
+    scene.add(b);
+  }
+  /* árvores decorativas nas laterais */
+  const trunkMat = new THREE.MeshLambertMaterial({ color: 0x6b4a2a });
+  const leafMat  = new THREE.MeshLambertMaterial({ color: 0x2e6b2e });
+  for (let i = 0; i < 10; i++){
+    const side = i % 2 === 0 ? -1 : 1;
+    const t = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.45, 2.6, 6), trunkMat);
+    const l = new THREE.Mesh(new THREE.ConeGeometry(1.9, 4.5, 7), leafMat);
+    const x = side * (BOARD_HALF + 4 + Math.random() * 4);
+    const z = rowZ(Math.floor(Math.random() * 13));
+    t.position.set(x, 1.3, z); l.position.set(x, 5, z);
+    scene.add(t, l);
+  }
+
+  /* veículos */
+  for (const lane of ROAD_LANES){
+    const spacing = SPAN / lane.count;
+    for (let i = 0; i < lane.count; i++){
+      const v = makeVehicle(lane.type, lane.color);
+      if (lane.dir < 0) v.rotation.y = Math.PI;
+      v.position.set(-WRAP + spacing * i + Math.random() * 3, 0, rowZ(lane.row));
+      v.userData.lane = lane;
+      scene.add(v);
+      vehicles.push(v);
+    }
+  }
+
+  /* troncos e tartarugas */
+  for (const lane of RIVER_LANES){
+    const spacing = SPAN / lane.count;
+    for (let i = 0; i < lane.count; i++){
+      const f = lane.kind === 'log' ? makeLog(lane.len) : makeTurtles(lane.size, lane.dir);
+      f.position.set(-WRAP + spacing * i + Math.random() * 3, -0.1, rowZ(lane.row));
+      f.userData.lane = lane;
+      /* em cada faixa de tartarugas, o primeiro grupo mergulha */
+      f.userData.diver = lane.kind === 'turtle' && i === 0;
+      f.userData.phase = Math.random() * 6;
+      scene.add(f);
+      floats.push(f);
+    }
+  }
+
+  frogMesh = makeFrogModel(false);
+  scene.add(frogMesh);
+
+  flyMesh = makeFly();
+  flyMesh.visible = false;
+  scene.add(flyMesh);
+
+  updateCamera();
+}
+
+function updateCamera(){
+  const a = camera.aspect;
+  const vFov = THREE.MathUtils.degToRad(camera.fov);
+  /* afasta a câmera o suficiente para caber a largura do tabuleiro */
+  const dist = Math.max(29, 14.8 / (Math.tan(vFov / 2) * a));
+  const ang = 1.08; // ~62° acima do horizonte
+  camera.position.set(0, dist * Math.sin(ang), rowZ(6) + dist * Math.cos(ang));
+  camera.lookAt(0, 0, rowZ(6) - 1);
+  /* névoa sempre atrás do tabuleiro, mesmo com a câmera afastada (telas estreitas) */
+  scene.fog.near = dist + 30;
+  scene.fog.far  = dist + 105;
+}
+
+/* ============================== JOGO ============================== */
+function showMsg(txt, secs){
+  const el = document.getElementById('msg');
+  el.textContent = txt;
+  el.style.opacity = 1;
+  msgTimer = secs || 1.4;
+}
+
+function respawnFrog(){
+  frog.x = colX(6); frog.row = 0; frog.riding = false;
+  frog.hopping = false; frog.dead = false; frog.face = 0;
+  maxRow = 0; timeLeft = TIME_MAX; lastTick = -1;
+  frogMesh.visible = true;
+  frogMesh.scale.set(1, 1, 1);
+  frogMesh.rotation.set(0, 0, 0);
+  frogMesh.position.set(frog.x, 0, rowZ(0));
+}
+
+function die(type){
+  if (frog.dead) return;
+  frog.dead = true; frog.hopping = false;
+  deathTimer = 1.0; deathType = type;
+  if (type === 'splash') sndSplash(); else sndCrash();
+}
+
+function addScore(n){
+  score += n;
+  if (score > hiscore){ hiscore = score; store.set(HISCORE_KEY, hiscore); }
+}
+
+function startHop(dx, dr){
+  if (state !== 'play' || frog.dead || frog.hopping) return;
+  const newRow = frog.row + dr;
+  if (newRow < 0 || newRow > 12) return;
+  let tx = frog.x + dx * CELL;
+  if (Math.abs(tx) > BOARD_HALF - 0.4 && dx !== 0) return;  // não sai do tabuleiro
+  frog.hopping = true; frog.hopT = 0;
+  frog.fromX = frog.x; frog.fromZ = rowZ(frog.row);
+  frog.fromY = frogMesh.position.y;
+  frog.toX = tx; frog.toRow = newRow;
+  frog.toY = (newRow >= 7 && newRow <= 11) ? FLOAT_Y : 0;
+  frog.face = dx > 0 ? -Math.PI/2 : dx < 0 ? Math.PI/2 : dr > 0 ? 0 : Math.PI;
+  frog.riding = false;
+  sndHop();
+}
+
+function landHop(){
+  frog.hopping = false;
+  frog.row = frog.toRow;
+  frog.x = frog.toX;
+  if (frog.row === 12){ tryHome(); return; }
+  /* em terra firme, alinha na grade */
+  if (frog.row <= 6){
+    const c = Math.max(0, Math.min(COLS - 1, Math.round(frog.x / CELL + (COLS - 1) / 2)));
+    frog.x = colX(c);
+  }
+  if (frog.row > maxRow){ addScore(10 * (frog.row - maxRow)); maxRow = frog.row; }
+}
+
+function tryHome(){
+  let slot = -1;
+  for (let i = 0; i < 5; i++)
+    if (Math.abs(frog.x - HOME_X[i]) < 1.2 && !homes[i]) slot = i;
+  if (slot < 0){
+    /* toca ocupada ou pulo fora do alvo: volta para onde estava */
+    sndBuzz();
+    frog.row = 11; frog.x = frog.fromX;
+    frogMesh.position.set(frog.x, FLOAT_Y, rowZ(11));
+    return;
+  }
+  homes[slot] = true;
+  homeFrogs[slot].visible = true;
+  let pts = 50 + Math.ceil(timeLeft) * 2;
+  if (fly.slot === slot){ pts += 200; fly.slot = -1; flyMesh.visible = false; sndFly(); showMsg('MOSCA! +200'); }
+  addScore(pts);
+  sndHome();
+  if (homes.every(h => h)){
+    addScore(1000);
+    level++;
+    homes.fill(false);
+    homeFrogs.forEach(m => m.visible = false);
+    sndLevel();
+    showMsg(`NÍVEL ${level}!`, 2);
+  }
+  respawnFrog();
+}
+
+function resetGame(){
+  score = 0; level = 1; lives = LIVES_START;
+  homes.fill(false);
+  homeFrogs.forEach(m => m.visible = false);
+  fly.slot = -1; fly.timer = 5; flyMesh.visible = false;
+  respawnFrog();
+  state = 'play';
+}
+
+function gameOver(){
+  state = 'over';
+  document.getElementById('over').classList.remove('hidden');
+  document.getElementById('overMsg').innerHTML =
+    `Você fez <b>${score}</b> pontos e chegou ao <b>NÍVEL ${level}</b>.`;
+  document.getElementById('overRecord').textContent =
+    (score >= hiscore && score > 0 ? '★ NOVO RECORDE! ' : '') + `RECORDE ${hiscore}`;
+}
+
+/* ============================== INPUT ============================== */
+addEventListener('keydown', e => {
+  const k = e.key.toLowerCase();
+  if (k.startsWith('arrow')) e.preventDefault();
+  if (k === 'p' && (state === 'play' || state === 'pause')){ togglePause(); return; }
+  if (e.repeat) return;
+  if (k === 'arrowup'    || k === 'w') startHop(0, 1);
+  if (k === 'arrowdown'  || k === 's') startHop(0, -1);
+  if (k === 'arrowleft'  || k === 'a') startHop(-1, 0);
+  if (k === 'arrowright' || k === 'd') startHop(1, 0);
+});
+
+function bindBtn(id, dx, dr){
+  const el = document.getElementById(id);
+  el.addEventListener('pointerdown', e => { e.preventDefault(); startHop(dx, dr); });
+}
+bindBtn('btnU', 0, 1); bindBtn('btnD', 0, -1); bindBtn('btnL', -1, 0); bindBtn('btnR', 1, 0);
+
+/* deslizar o dedo na tela também pula */
+let swipe = null;
+const cv = document.getElementById('c');
+cv.addEventListener('pointerdown', e => { swipe = { x: e.clientX, y: e.clientY }; });
+cv.addEventListener('pointerup', e => {
+  if (!swipe) return;
+  const dx = e.clientX - swipe.x, dy = e.clientY - swipe.y;
+  swipe = null;
+  if (Math.abs(dx) < 22 && Math.abs(dy) < 22){ startHop(0, 1); return; }  // toque = frente
+  if (Math.abs(dx) > Math.abs(dy)) startHop(dx > 0 ? 1 : -1, 0);
+  else startHop(0, dy < 0 ? 1 : -1);
+});
+
+function togglePause(){
+  if (state === 'play'){ state = 'pause'; document.getElementById('pause').classList.remove('hidden'); }
+  else if (state === 'pause'){ state = 'play'; document.getElementById('pause').classList.add('hidden'); }
+}
+document.getElementById('resumeBtn').onclick = togglePause;
+document.getElementById('startBtn').onclick = () => {
+  initAudio(); if (AC && AC.state === 'suspended') AC.resume();
+  document.getElementById('menu').classList.add('hidden');
+  resetGame();
+};
+document.getElementById('restartBtn').onclick = () => {
+  document.getElementById('over').classList.add('hidden');
+  resetGame();
+};
+addEventListener('resize', () => {
+  camera.aspect = innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+  updateCamera();
+});
+
+/* ============================== LOOP ============================== */
+let elapsed = 0;
+function update(dt){
+  elapsed += dt;
+  const mul = speedMul();
+
+  /* veículos */
+  for (const v of vehicles){
+    const lane = v.userData.lane;
+    v.position.x += lane.dir * lane.speed * mul * dt;
+    if (lane.dir > 0 && v.position.x >  WRAP) v.position.x -= SPAN;
+    if (lane.dir < 0 && v.position.x < -WRAP) v.position.x += SPAN;
+  }
+
+  /* troncos e tartarugas */
+  for (const f of floats){
+    const lane = f.userData.lane;
+    f.position.x += lane.dir * lane.speed * mul * dt;
+    if (lane.dir > 0 && f.position.x >  WRAP) f.position.x -= SPAN;
+    if (lane.dir < 0 && f.position.x < -WRAP) f.position.x += SPAN;
+    let y = -0.1 + Math.sin(elapsed * 2 + f.position.x) * 0.05;   // balanço na água
+    if (f.userData.diver){
+      f.userData.phase += dt;
+      const t = f.userData.phase % 6;
+      if (t > 4.2) y = -1.1;                                       // submersa
+      else if (t > 3.6) y = -0.1 - (t - 3.6) * 1.2;                // afundando (aviso)
+    }
+    f.position.y += (y - f.position.y) * Math.min(1, dt * 6);
+  }
+  waterMat.color.setHSL(0.62, 0.65, 0.28 + Math.sin(elapsed * 1.3) * 0.03);
+
+  /* mosca bônus */
+  fly.timer -= dt;
+  if (fly.timer <= 0){
+    if (fly.slot < 0){
+      const free = [];
+      for (let i = 0; i < 5; i++) if (!homes[i]) free.push(i);
+      if (free.length){
+        fly.slot = free[(Math.random() * free.length) | 0];
+        flyMesh.visible = true;
+        flyMesh.position.set(HOME_X[fly.slot], 0, rowZ(12));
+        fly.timer = 4;
+      } else fly.timer = 3;
+    } else {
+      fly.slot = -1; flyMesh.visible = false;
+      fly.timer = 4 + Math.random() * 5;
+    }
+  }
+  if (flyMesh.visible) flyMesh.position.y = Math.sin(elapsed * 9) * 0.08;
+
+  /* morte em andamento */
+  if (frog.dead){
+    deathTimer -= dt;
+    if (deathType === 'splash'){
+      frogMesh.position.y -= dt * 2.2;
+      frogMesh.rotation.y += dt * 6;
+      frogMesh.scale.multiplyScalar(Math.max(0, 1 - dt * 1.5));
+    } else {
+      frogMesh.scale.y = Math.max(0.1, frogMesh.scale.y - dt * 4);
+      frogMesh.scale.x = Math.min(1.7, frogMesh.scale.x + dt * 3);
+      frogMesh.scale.z = Math.min(1.7, frogMesh.scale.z + dt * 3);
+    }
+    if (deathTimer <= 0){
+      lives--;
+      if (lives <= 0){ gameOver(); return; }
+      respawnFrog();
+    }
+    updateHUD();
+    return;
+  }
+
+  /* pulo */
+  if (frog.hopping){
+    frog.hopT += dt / HOP_T;
+    const t = Math.min(1, frog.hopT);
+    const x = frog.fromX + (frog.toX - frog.fromX) * t;
+    const z = frog.fromZ + (rowZ(frog.toRow) - frog.fromZ) * t;
+    const y = frog.fromY + (frog.toY - frog.fromY) * t + Math.sin(Math.PI * t) * 0.9;
+    frogMesh.position.set(x, y, z);
+    frogMesh.rotation.y = frog.face;
+    if (t >= 1) landHop();
+  }
+
+  /* rio: precisa estar sobre algo que flutua */
+  if (!frog.hopping && !frog.dead && frog.row >= 7 && frog.row <= 11){
+    let ride = null;
+    for (const f of floats){
+      if (f.userData.lane.row !== frog.row) continue;
+      if (f.position.y < -0.35) continue;                          // tartaruga submersa
+      if (Math.abs(frog.x - f.position.x) <= f.userData.halfLen + 0.35){ ride = f; break; }
+    }
+    if (!ride){ die('splash'); }
+    else {
+      frog.riding = true;
+      frog.x += ride.userData.lane.dir * ride.userData.lane.speed * mul * dt;
+      if (Math.abs(frog.x) > BOARD_HALF + 0.4){ die('splash'); }   // levado para fora
+      else frogMesh.position.set(frog.x, FLOAT_Y + ride.position.y + 0.1, rowZ(frog.row));
+    }
+  } else if (!frog.hopping && !frog.dead){
+    frogMesh.position.set(frog.x, 0, rowZ(frog.row));
+    frogMesh.rotation.y = frog.face;
+  }
+
+  /* atropelamento */
+  if (!frog.dead && frog.row >= 1 && frog.row <= 5){
+    const fz = frogMesh.position.z, fx = frogMesh.position.x;
+    for (const v of vehicles){
+      if (Math.abs(fz - v.position.z) > 0.95) continue;
+      if (Math.abs(fx - v.position.x) < v.userData.halfLen + 0.6){ die('squash'); break; }
+    }
+  }
+
+  /* cronômetro */
+  timeLeft -= dt;
+  const sec = Math.ceil(timeLeft);
+  if (sec <= 5 && sec >= 1 && sec !== lastTick){ lastTick = sec; sndTick(); }
+  if (timeLeft <= 0){ timeLeft = 0; die('squash'); }
+
+  updateHUD();
+}
+
+function updateHUD(){
+  document.getElementById('scoreLbl').textContent = `PONTOS ${score}`;
+  document.getElementById('hiLbl').textContent = `RECORDE ${hiscore}`;
+  document.getElementById('levelLbl').textContent = `NÍVEL ${level}`;
+  document.getElementById('livesLbl').textContent = `VIDAS ${'●'.repeat(Math.max(0, lives))}`;
+  const tEl = document.getElementById('timer');
+  tEl.textContent = String(Math.ceil(timeLeft));
+  tEl.classList.toggle('low', timeLeft <= 10);
+}
+
+function loop(){
+  requestAnimationFrame(loop);
+  const dt = Math.min(0.05, clock.getDelta());
+  if (state === 'play') update(dt);
+  if (msgTimer > 0){
+    msgTimer -= dt;
+    if (msgTimer <= 0) document.getElementById('msg').style.opacity = 0;
+  }
+  /* câmera acompanha suavemente o sapo no eixo X */
+  const targetX = frogMesh.position.x * 0.22;
+  camera.position.x += (targetX - camera.position.x) * Math.min(1, dt * 3);
+  renderer.render(scene, camera);
+}
+
+buildWorld();
+clock = new THREE.Clock();
+document.getElementById('menuRecord').textContent = hiscore > 0 ? `RECORDE ${hiscore}` : '';
+loop();
+})();
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./service-worker.js');
+  });
+}
+</script>
+</body>
+</html>
