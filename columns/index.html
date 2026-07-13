@@ -35,6 +35,14 @@
   .overlay .btn{margin-top:24px;background:#7326a3;color:#fff;border:3px solid #ffd24a;padding:14px 34px;
                 font-family:inherit;font-size:clamp(15px,3vw,20px);letter-spacing:4px;cursor:pointer;font-weight:bold}
   .overlay .btn:active{transform:scale(.96)}
+  .diffTitle{margin-top:22px;letter-spacing:2px;font-weight:bold;color:var(--hud);font-size:clamp(12px,2.6vw,16px)}
+  .diffRow{display:flex;justify-content:center;gap:10px;margin-top:12px}
+  .diffBtn{width:52px;height:52px;background:var(--panel);border:2px solid var(--hud-dim);color:var(--hud);
+           font-family:inherit;font-size:clamp(16px,3.4vw,22px);font-weight:bold;cursor:pointer}
+  .diffBtn.sel{background:#7326a3;border-color:#ffd24a;color:#fff}
+  .diffBtn:active{transform:scale(.94)}
+  .diffBtn.wide{width:auto;padding:0 22px}
+  .diffNote{margin-top:8px;color:#8890b8;letter-spacing:1px;font-size:clamp(10px,2.2vw,13px)}
   .hidden{display:none !important}
   #touch{position:fixed;inset:auto 0 0 0;display:none;justify-content:space-between;align-items:flex-end;
          padding:10px 14px calc(env(safe-area-inset-bottom, 0px) + 46px);z-index:6;pointer-events:none}
@@ -79,9 +87,24 @@
        Reações em cadeia valem pontos em dobro!<br>
        A <b>joia mágica</b> ✨ elimina todas as joias<br>
        da cor em que ela pousar.<br><br>
+       A sombra mostra onde a coluna vai pousar e o<br>
+       destaque verde sugere colunas que formam combinação.<br><br>
        ◀ ▶ mover &nbsp;·&nbsp; ⤴ ⤵ (↑ ou espaço) trocar cores<br>
        ▼ acelerar queda &nbsp;·&nbsp; P pausar</p>
     <div class="record" id="menuRecord"></div>
+    <div class="diffTitle">DIFICULDADE · TIPOS DE JOIAS</div>
+    <div class="diffRow">
+      <button class="diffBtn" data-n="5">5</button>
+      <button class="diffBtn" data-n="6">6</button>
+      <button class="diffBtn" data-n="7">7</button>
+      <button class="diffBtn" data-n="8">8</button>
+    </div>
+    <div class="diffTitle">DICAS DE POSICIONAMENTO</div>
+    <div class="diffRow">
+      <button class="diffBtn wide hintBtn" data-h="1">SIM</button>
+      <button class="diffBtn wide hintBtn" data-h="0">NÃO</button>
+    </div>
+    <div class="diffNote">as dicas são desativadas ao chegar no nível 3</div>
     <button class="btn" id="btnStart">INICIAR</button>
   </div>
 </div>
@@ -112,7 +135,10 @@
    ============================================================ */
 const COLS = 7;              // largura do poço (colunas)
 const ROWS = 15;             // altura do poço (linhas)
-const NCOLORS = 8;           // quantidade de cores/formas (máx. 8)
+const MAX_COLORS = 8;        // máximo de cores/formas disponíveis
+const NCOLORS_KEY = 'columns3d.ncolors'; // dificuldade escolhida no menu (5 a 8)
+const HINTS_KEY = 'columns3d.hints';     // dicas de posicionamento ligadas/desligadas
+const HINTS_MAX_LEVEL = 2;               // dicas funcionam até este nível (desativam no seguinte)
 const MAGIC_CHANCE  = 0.02;  // chance de coluna mágica (0 a 1)
 const TRIPLE_CHANCE = 0.10;  // chance de coluna com 3 joias iguais (0 a 1)
 const LEVEL_JEWELS = 25;     // joias eliminadas para subir de nível
@@ -132,8 +158,12 @@ let state = 'menu';           // menu | play | flash | pause | over
 let grid, piece, nextGems, nextMagic;
 let score = 0, level = 1, jewels = 0, chain = 1;
 let hiscore = +(localStorage.getItem(HISCORE_KEY) || 0);
-let flashSet = [], flashTimer = 0, softDrop = false;
+let flashSet = [], flashTimer = 0, softDrop = false, fallAcc = 0;
 let pauseFrom = 'play';
+const savedNColors = parseInt(localStorage.getItem(NCOLORS_KEY), 10);
+let nColors = savedNColors >= 5 && savedNColors <= MAX_COLORS ? savedNColors : 6;
+let hintsOn = localStorage.getItem(HINTS_KEY) !== '0';
+const hintsActive = () => hintsOn && level <= HINTS_MAX_LEVEL;
 
 /* ===== Áudio ===== */
 let AC = null;
@@ -195,7 +225,7 @@ scene.add(fill);
 /* Poço (moldura) */
 {
   const frameMat = new THREE.MeshPhongMaterial({ color: 0x2a2a44, shininess: 30 });
-  const edgeMat  = new THREE.MeshPhongMaterial({ color: 0x5a4a9a, emissive: 0x1a1030, shininess: 60 });
+  const edgeMat  = new THREE.MeshPhongMaterial({ color: 0x232338, emissive: 0x08081a, shininess: 20 });
   const wallL = new THREE.Mesh(new THREE.BoxGeometry(0.5, ROWS + 1, 1.2), frameMat);
   wallL.position.set(-0.85, ROWS / 2 - 0.5, 0);
   const wallR = wallL.clone(); wallR.position.x = COLS - 1 + 0.85;
@@ -208,6 +238,11 @@ scene.add(fill);
   for (let i = 0; i <= COLS; i++) {
     const line = new THREE.Mesh(new THREE.BoxGeometry(0.03, ROWS, 0.03), edgeMat);
     line.position.set(i - 0.5, ROWS / 2 - 0.5, -0.5);
+    scene.add(line);
+  }
+  for (let r = 0; r <= ROWS; r++) {
+    const line = new THREE.Mesh(new THREE.BoxGeometry(COLS, 0.03, 0.03), edgeMat);
+    line.position.set((COLS - 1) / 2, r - 0.5, -0.5);
     scene.add(line);
   }
 }
@@ -240,10 +275,17 @@ function makeGem(v, magic){
   return m;
 }
 
+const ghostMats = COLORS.map(c => new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.22, depthWrite: false }));
+const ghostMagicMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.25, depthWrite: false });
+const hintMat = new THREE.MeshBasicMaterial({ color: 0x7CFC00, transparent: true, opacity: 0.13, depthWrite: false, side: THREE.DoubleSide });
+const hintGeom = new THREE.PlaneGeometry(0.92, 2.92);
+
 const gemLayer = new THREE.Group();     // joias fixas no poço
 const pieceGroup = new THREE.Group();   // coluna em queda
 const previewGroup = new THREE.Group(); // próxima coluna
-scene.add(gemLayer, pieceGroup, previewGroup);
+const ghostGroup = new THREE.Group();   // sombra do ponto de pouso
+const hintGroup = new THREE.Group();    // sugestões de colunas com combinação
+scene.add(gemLayer, pieceGroup, previewGroup, ghostGroup, hintGroup);
 let cellMesh = {}; // "r,c" -> mesh
 
 function syncBoard(){
@@ -263,6 +305,10 @@ function syncBoard(){
 function buildPieceMeshes(){
   while (pieceGroup.children.length) pieceGroup.remove(pieceGroup.children[0]);
   for (let i = 0; i < 3; i++) pieceGroup.add(makeGem(piece.gems[i], piece.magic));
+  while (ghostGroup.children.length) ghostGroup.remove(ghostGroup.children[0]);
+  for (let i = 0; i < 3; i++)
+    ghostGroup.add(piece.magic ? new THREE.Mesh(magicGeom, ghostMagicMat)
+                               : new THREE.Mesh(GEOMS[piece.gems[i]], ghostMats[piece.gems[i]]));
   while (previewGroup.children.length) previewGroup.remove(previewGroup.children[0]);
   for (let i = 0; i < 3; i++) {
     const m = makeGem(nextGems[i], nextMagic);
@@ -283,10 +329,52 @@ function colHeight(c){
 }
 function genGems(){
   if (Math.random() < TRIPLE_CHANCE) {
-    const v = (Math.random() * NCOLORS) | 0;
+    const v = (Math.random() * nColors) | 0;
     return [v, v, v];
   }
-  return [0, 0, 0].map(() => (Math.random() * NCOLORS) | 0);
+  return [0, 0, 0].map(() => (Math.random() * nColors) | 0);
+}
+
+/* Sugestões: destaca colunas onde a peça atual (em alguma rotação)
+   forma combinação; para a joia mágica, a coluna que elimina mais joias */
+function computeHints(){
+  while (hintGroup.children.length) hintGroup.remove(hintGroup.children[0]);
+  if (!hintsActive()) return;
+  const addHint = c => {
+    const m = new THREE.Mesh(hintGeom, hintMat);
+    m.position.set(c, colHeight(c) + 1, -0.47);
+    hintGroup.add(m);
+  };
+  if (piece.magic) {
+    let best = 1, bestCols = [];
+    for (let c = 0; c < COLS; c++) {
+      const h = colHeight(c);
+      if (h === 0 || h >= ROWS) continue;
+      const color = grid[h - 1][c];
+      let n = 0;
+      for (let r = 0; r < ROWS; r++)
+        for (let cc = 0; cc < COLS; cc++)
+          if (grid[r][cc] === color) n++;
+      if (n > best) { best = n; bestCols = [c]; }
+      else if (n === best) bestCols.push(c);
+    }
+    bestCols.forEach(addHint);
+    return;
+  }
+  const g = piece.gems;
+  const rots = [g, [g[2], g[0], g[1]], [g[1], g[2], g[0]]];
+  for (let c = 0; c < COLS; c++) {
+    const h = colHeight(c);
+    if (h + 3 > ROWS) continue;
+    let good = false;
+    for (const rg of rots) {
+      for (let i = 0; i < 3; i++) grid[h + i][c] = rg[i];
+      if (findMatches().size) good = true;
+      for (let i = 0; i < 3; i++) grid[h + i][c] = null;
+      if (good) break;
+    }
+    if (good) addHint(c);
+  }
 }
 
 function spawnPiece(){
@@ -296,7 +384,10 @@ function spawnPiece(){
   nextMagic = Math.random() < MAGIC_CHANCE;
   softDrop = false;
   chain = 1;
+  fallAcc = 0;
   buildPieceMeshes();
+  computeHints();
+  hintGroup.visible = true;
   state = 'play';
 }
 
@@ -332,6 +423,8 @@ function startFlash(set){
   flashTimer = FLASH_T;
   state = 'flash';
   pieceGroup.visible = false;
+  ghostGroup.visible = false;
+  hintGroup.visible = false;
   sndClear(chain);
   if (chain > 1) showChain(chain);
 }
@@ -405,6 +498,8 @@ function cycle(dir = 1){
     for (let i = 0; i < 3; i++) {
       pieceGroup.children[i].geometry = GEOMS[piece.gems[i]];
       pieceGroup.children[i].material = MATS[piece.gems[i]];
+      ghostGroup.children[i].geometry = GEOMS[piece.gems[i]];
+      ghostGroup.children[i].material = ghostMats[piece.gems[i]];
     }
   sndRotate();
 }
@@ -417,6 +512,8 @@ function fallSpeed(){
 function gameOver(){
   state = 'over';
   pieceGroup.visible = false;
+  ghostGroup.visible = false;
+  hintGroup.visible = false;
   sndOver();
   if (score > hiscore) {
     hiscore = score;
@@ -460,6 +557,26 @@ function updateHud(){
 }
 document.getElementById('menuRecord').textContent = hiscore ? 'RECORDE: ' + hiscore : '';
 updateHud();
+
+/* ===== Seleção de dificuldade (tipos de joias) ===== */
+const diffBtns = [...document.querySelectorAll('.diffBtn[data-n]')];
+function syncDiff(){ diffBtns.forEach(b => b.classList.toggle('sel', +b.dataset.n === nColors)); }
+diffBtns.forEach(b => b.addEventListener('click', () => {
+  nColors = +b.dataset.n;
+  localStorage.setItem(NCOLORS_KEY, nColors);
+  syncDiff();
+}));
+syncDiff();
+
+/* ===== Dicas ligadas/desligadas ===== */
+const hintBtns = [...document.querySelectorAll('.hintBtn')];
+function syncHintBtns(){ hintBtns.forEach(b => b.classList.toggle('sel', (b.dataset.h === '1') === hintsOn)); }
+hintBtns.forEach(b => b.addEventListener('click', () => {
+  hintsOn = b.dataset.h === '1';
+  localStorage.setItem(HINTS_KEY, hintsOn ? '1' : '0');
+  syncHintBtns();
+}));
+syncHintBtns();
 
 /* ===== Layout / câmera ===== */
 function layout(){
@@ -552,14 +669,25 @@ function animate(now){
   // Giro sincronizado de todas as joias (mesmo ângulo, mesmo instante)
   const spinAngle = t * SPIN_SPEED;
   const spinAll = g => g.children.forEach(m => { m.rotation.y = spinAngle; });
-  spinAll(gemLayer); spinAll(pieceGroup); spinAll(previewGroup);
+  spinAll(gemLayer); spinAll(pieceGroup); spinAll(previewGroup); spinAll(ghostGroup);
 
   if (state === 'play') {
-    piece.y -= fallSpeed() * dt;
-    if (piece.y <= colHeight(piece.col)) lockPiece();
-    if (state === 'play')
+    // queda por patamares: desce uma linha inteira a cada intervalo
+    fallAcc += fallSpeed() * dt;
+    while (fallAcc >= 1 && state === 'play') {
+      fallAcc -= 1;
+      if (piece.y <= colHeight(piece.col)) lockPiece();
+      else piece.y--;
+    }
+    if (state === 'play') {
       for (let i = 0; i < 3; i++)
         pieceGroup.children[i].position.set(piece.col, piece.y + i, 0);
+      const gh = colHeight(piece.col);
+      ghostGroup.visible = hintsActive() && piece.y > gh;
+      for (let i = 0; i < 3; i++)
+        ghostGroup.children[i].position.set(piece.col, gh + i, 0);
+      hintMat.opacity = 0.09 + 0.07 * Math.sin(t * 5);
+    }
   } else if (state === 'flash') {
     flashTimer -= dt;
     const phase = ((FLASH_T - flashTimer) * 14 | 0) % 2;

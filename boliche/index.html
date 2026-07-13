@@ -102,6 +102,8 @@
     <div class="tracks">
       <button class="trackbtn" id="trkSand" data-track="sand">🏜 AREIA</button>
       <button class="trackbtn" id="trkGlass" data-track="glass">🌈 VIDRO</button>
+      <button class="trackbtn" id="trkCyber" data-track="cyber">🌆 CYBERPUNK</button>
+      <button class="trackbtn" id="trkLava" data-track="lava">🌋 LAVA</button>
     </div>
     <div class="record" id="menuRecord"></div>
     <button class="btn" id="startBtn">INICIAR</button>
@@ -134,8 +136,8 @@
 const SEG_LEN = 15, N_SEG = 62;
 const ROAD_W  = 15, ROAD_HALF = ROAD_W / 2;
 const CURVE_K = 0.00012;
-const MAX_SPEED = 95;                 // menor = sensação de velocidade mais suave
-const SPEED_DISPLAY = 180 / MAX_SPEED;
+const MAX_SPEED = 35;                 // bola rolando bem devagar
+const SPEED_DISPLAY = 36 / MAX_SPEED;
 const DAY_LENGTH = 100;               // segundos por dia (contador regressivo)
 const POOL_SIZE = 12;                 // alvos no pool (ativos crescem por dia)
 const QUOTA = d => 25 + 5 * d;        // dia 1: 30, dia 2: 35, dia 3: 40, ...
@@ -193,9 +195,14 @@ const prefs = {
 /* ============================== ESTADO ============================== */
 let scene, camera, renderer, clock;
 let sunLight, hemiLight, sunMesh, moonMesh, ballLight;
-let ground, dunes = [], mountains = [];
+let ground, cyberGround, lavaGround;
+let dunes = [], mountains = [], buildings = [], volcanoes = [];
+const THEME_KEYS = ['sand', 'glass', 'cyber', 'lava'];
 let segments = [], props = [], targets = [], particles = [];
 let playerGrp, playerSpin, playerMat;
+let playerShadow, playerShadowMat, targetShadows = [], targetShadowMat;
+/* parâmetros da sombra projetada, recalculados conforme a posição do sol/lua */
+const shadow = { kx: 0, kz: 0, op: 0, stretch: 1, rot: 0 };
 
 let state = 'menu';
 let theme = prefs.track;
@@ -241,6 +248,10 @@ function blip(freq, dur, vol, type){
   g.gain.exponentialRampToValueAtTime(0.001, AC.currentTime + dur);
   o.connect(g).connect(AC.destination);
   o.start(); o.stop(AC.currentTime + dur);
+}
+/* vibração do celular (quando suportado) */
+function vibrate(p){
+  if (navigator.vibrate){ try { navigator.vibrate(p); } catch(e){} }
 }
 const sndSand = () => { blip(160, .22, .14, 'triangle'); blip(70, .3, .12, 'sawtooth'); };
 const sndPin  = () => { blip(620, .08, .09); setTimeout(()=>blip(940,.1,.08),60); };
@@ -320,6 +331,77 @@ function makeGlassTexture(){
       }
       cx.closePath(); cx.fill();
       cx.strokeStyle = 'rgba(255,255,255,.25)'; cx.stroke();
+    }
+  }
+  return new THREE.CanvasTexture(cv);
+}
+function makeCyberTexture(){
+  /* asfalto escuro com grade de neon */
+  const size = 256;
+  const cv = document.createElement('canvas'); cv.width = cv.height = size;
+  const cx = cv.getContext('2d');
+  cx.fillStyle = '#07070f'; cx.fillRect(0, 0, size, size);
+  for (let i = 0; i < 600; i++){
+    cx.fillStyle = `rgba(160,180,255,${0.02 + Math.random()*0.04})`;
+    cx.fillRect(Math.random()*size, Math.random()*size, 1.5, 1.5);
+  }
+  const neon = ['#00e5ff', '#ff2bd6', '#7b2bff'];
+  cx.lineWidth = 3;
+  for (let x = 12 + Math.random()*20; x < size; x += 48 + Math.random()*24){
+    cx.strokeStyle = neon[(Math.random()*neon.length)|0];
+    cx.shadowColor = cx.strokeStyle; cx.shadowBlur = 9;
+    cx.beginPath(); cx.moveTo(x, 0); cx.lineTo(x, size); cx.stroke();
+  }
+  for (let y = 16 + Math.random()*24; y < size; y += 56 + Math.random()*28){
+    cx.strokeStyle = neon[(Math.random()*neon.length)|0];
+    cx.shadowColor = cx.strokeStyle; cx.shadowBlur = 9;
+    cx.beginPath(); cx.moveTo(0, y); cx.lineTo(size, y); cx.stroke();
+  }
+  const t = new THREE.CanvasTexture(cv);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  return t;
+}
+function makeLavaTexture(){
+  /* crosta de basalto com rachaduras incandescentes */
+  const size = 256;
+  const cv = document.createElement('canvas'); cv.width = cv.height = size;
+  const cx = cv.getContext('2d');
+  cx.fillStyle = '#170a06'; cx.fillRect(0, 0, size, size);
+  for (let i = 0; i < 50; i++){
+    cx.fillStyle = `rgba(0,0,0,${0.15 + Math.random()*0.25})`;
+    cx.beginPath();
+    cx.arc(Math.random()*size, Math.random()*size, 8 + Math.random()*22, 0, Math.PI*2);
+    cx.fill();
+  }
+  const hot = ['#ff5a00', '#ffb400', '#ff2200'];
+  for (let i = 0; i < 14; i++){
+    let x = Math.random()*size, y = Math.random()*size;
+    cx.strokeStyle = hot[i % hot.length];
+    cx.shadowColor = cx.strokeStyle; cx.shadowBlur = 10;
+    cx.lineWidth = 1.5 + Math.random()*2;
+    cx.beginPath(); cx.moveTo(x, y);
+    for (let s = 0; s < 8; s++){
+      x += (Math.random()-0.5)*60; y += (Math.random()-0.5)*60;
+      cx.lineTo(x, y);
+    }
+    cx.stroke();
+  }
+  const t = new THREE.CanvasTexture(cv);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  return t;
+}
+function makeWindowTexture(){
+  /* janelas acesas dos prédios do horizonte cyberpunk */
+  const cv = document.createElement('canvas'); cv.width = 64; cv.height = 128;
+  const cx = cv.getContext('2d');
+  cx.fillStyle = '#0a0a16'; cx.fillRect(0, 0, 64, 128);
+  const cols = ['#00e5ff', '#ff2bd6', '#ffe14a', '#7b2bff'];
+  for (let y = 4; y < 124; y += 8){
+    for (let x = 4; x < 60; x += 8){
+      if (Math.random() < 0.5){
+        cx.fillStyle = cols[(Math.random()*cols.length)|0];
+        cx.fillRect(x, y, 4, 5);
+      }
     }
   }
   return new THREE.CanvasTexture(cv);
@@ -423,6 +505,39 @@ function buildWorld(){
     m.rotation.y = Math.random();
     scene.add(m); mountains.push(m);
   }
+  /* cenário distante — tema cyberpunk: prédios com janelas de neon */
+  for (let i = 0; i < 10; i++){
+    const w = 60 + Math.random()*80, h = 140 + Math.random()*220;
+    const bMat = new THREE.MeshLambertMaterial({
+      color: 0x0c0c1a, emissive: 0xffffff,
+      emissiveMap: makeWindowTexture(), emissiveIntensity: 0.9,
+    });
+    const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, w), bMat);
+    b.position.set(-950 + i*210 + (Math.random()*60-30), h/2 - 36, -1450 - Math.random()*350);
+    scene.add(b); buildings.push(b);
+  }
+  /* cenário distante — tema lava: vulcões escuros com cratera incandescente */
+  const volcanoMat = new THREE.MeshLambertMaterial({ color: 0x201008 });
+  const craterMat = new THREE.MeshBasicMaterial({ color: 0xff5a00 });
+  for (let i = 0; i < 9; i++){
+    const h = 100 + Math.random()*170;
+    const v = new THREE.Mesh(new THREE.ConeGeometry(130 + Math.random()*130, h, 6), volcanoMat);
+    v.position.set(-900 + i*230 + (Math.random()*80-40), h/2 - 36, -1500 - Math.random()*300);
+    v.rotation.y = Math.random();
+    const glow = new THREE.Mesh(new THREE.SphereGeometry(16 + Math.random()*12, 8, 8), craterMat);
+    glow.position.y = h/2;
+    v.add(glow);
+    scene.add(v); volcanoes.push(v);
+  }
+  /* chão distante de cada tema novo */
+  cyberGround = new THREE.Mesh(new THREE.PlaneGeometry(6000, 6000),
+    new THREE.MeshLambertMaterial({ color: 0x06060f }));
+  cyberGround.rotation.x = -Math.PI/2; cyberGround.position.set(0, -36, -800);
+  scene.add(cyberGround);
+  lavaGround = new THREE.Mesh(new THREE.PlaneGeometry(6000, 6000),
+    new THREE.MeshLambertMaterial({ color: 0x1a0a06, emissive: 0x2a0800 }));
+  lavaGround.rotation.x = -Math.PI/2; lavaGround.position.set(0, -36, -800);
+  scene.add(lavaGround);
 
   sunMesh = new THREE.Mesh(new THREE.SphereGeometry(38, 16, 16),
     new THREE.MeshBasicMaterial({ color: 0xffd75e }));
@@ -435,6 +550,25 @@ function buildWorld(){
   const sandFloorMat = new THREE.MeshLambertMaterial({ map: sandFloorTex });
   const sandBermMat  = new THREE.MeshLambertMaterial({ map: makeSandTexture(0xcfae6e, 128, 2600) });
   const glassEdgeMat = new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0x88eeff });
+
+  /* pisos cyberpunk e lava: poucas variantes compartilhadas entre os segmentos */
+  const cyberFloorMats = [], lavaFloorMats = [];
+  for (let i = 0; i < 4; i++){
+    const cm = new THREE.MeshLambertMaterial({ map: makeCyberTexture() });
+    cm.emissive = new THREE.Color(0xffffff);
+    cm.emissiveMap = cm.map;
+    cm.emissiveIntensity = 0.5;
+    cyberFloorMats.push(cm);
+    const lm = new THREE.MeshLambertMaterial({ map: makeLavaTexture() });
+    lm.emissive = new THREE.Color(0xffffff);
+    lm.emissiveMap = lm.map;
+    lm.emissiveIntensity = 0.6;
+    lavaFloorMats.push(lm);
+  }
+  const neonEdgeMatL = new THREE.MeshLambertMaterial({ color: 0x003344, emissive: 0x00e5ff });
+  const neonEdgeMatR = new THREE.MeshLambertMaterial({ color: 0x330022, emissive: 0xff2bd6 });
+  const lavaBermMat  = new THREE.MeshLambertMaterial({ color: 0x1a0d08 });
+  const emberMat     = new THREE.MeshLambertMaterial({ color: 0x220400, emissive: 0xff6a00 });
 
   for (let i = 0; i < N_SEG; i++){
     const g = new THREE.Group();
@@ -461,7 +595,27 @@ function buildWorld(){
     }
     g.add(glass);
 
-    g.userData = { sand, glass };
+    const cyber = new THREE.Group();
+    const cp = new THREE.Mesh(new THREE.PlaneGeometry(ROAD_W + 1.6, SEG_LEN + 0.4), cyberFloorMats[i % 4]);
+    cp.rotation.x = -Math.PI/2; cyber.add(cp);
+    const eL = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, SEG_LEN + 0.4), neonEdgeMatL);
+    eL.position.set(-ROAD_HALF - 0.6, 0.2, 0); cyber.add(eL);
+    const eR = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, SEG_LEN + 0.4), neonEdgeMatR);
+    eR.position.set(ROAD_HALF + 0.6, 0.2, 0); cyber.add(eR);
+    g.add(cyber);
+
+    const lava = new THREE.Group();
+    const lp = new THREE.Mesh(new THREE.PlaneGeometry(ROAD_W + 1.6, SEG_LEN + 0.4), lavaFloorMats[i % 4]);
+    lp.rotation.x = -Math.PI/2; lava.add(lp);
+    for (const x of [-ROAD_HALF - 0.2, ROAD_HALF + 0.2]){
+      const berm = new THREE.Mesh(new THREE.BoxGeometry(1.8, 1.4, SEG_LEN + 0.4), lavaBermMat);
+      berm.position.set(x + Math.sign(x)*0.9, 0.55, 0); lava.add(berm);
+      const strip = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.2, SEG_LEN + 0.4), emberMat);
+      strip.position.set(x, 0.1, 0); lava.add(strip);
+    }
+    g.add(lava);
+
+    g.userData = { sand, glass, cyber, lava };
     g.position.z = -i * SEG_LEN;
     scene.add(g);
     segments.push(g);
@@ -473,6 +627,9 @@ function buildWorld(){
   const chestBandMat = new THREE.MeshLambertMaterial({ color: 0x554433 });
   const woodMat  = new THREE.MeshLambertMaterial({ color: 0xe8c890 });
   const pencilCols = [0x22ccee, 0x3355ee, 0x9922ee, 0xee22aa, 0x66ddaa, 0x7b2be8];
+  const poleMat = new THREE.MeshLambertMaterial({ color: 0x101018 });
+  const obsidianMat = new THREE.MeshLambertMaterial({ color: 0x14090c });
+  const neonCols = [0x00e5ff, 0xff2bd6, 0x7b2bff, 0x2bff88, 0xffe14a];
 
   for (let i = 0; i < 26; i++){
     const g = new THREE.Group();
@@ -504,8 +661,43 @@ function buildWorld(){
     lead.position.y = ph + 1.65; glassProp.add(lead);
     g.add(glassProp);
 
+    /* tema cyberpunk: totens de neon e torres de anéis */
+    const cyberProp = new THREE.Group();
+    const nMat = new THREE.MeshLambertMaterial({ color: 0x080810, emissive: neonCols[i % neonCols.length] });
+    if (i % 2 === 0){
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 8, 8), poleMat);
+      pole.position.y = 4; cyberProp.add(pole);
+      const sign = new THREE.Mesh(new THREE.BoxGeometry(3.6, 2.2, 0.4), nMat);
+      sign.position.y = 7; cyberProp.add(sign);
+    } else {
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 9, 8), poleMat);
+      pole.position.y = 4.5; cyberProp.add(pole);
+      for (let k = 0; k < 3; k++){
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(1.2 - k*0.25, 0.16, 8, 18), nMat);
+        ring.rotation.x = Math.PI/2; ring.position.y = 3.5 + k*2.2; cyberProp.add(ring);
+      }
+    }
+    g.add(cyberProp);
+
+    /* tema lava: rochas vulcânicas e espinhos de obsidiana com ponta em brasa */
+    const lavaProp = new THREE.Group();
+    if (i % 2 === 0){
+      const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(1.8 + Math.random()*1.4), obsidianMat);
+      rock.position.y = 1.4; rock.rotation.set(Math.random()*3, Math.random()*3, 0);
+      lavaProp.add(rock);
+      const ember = new THREE.Mesh(new THREE.DodecahedronGeometry(0.5), emberMat);
+      ember.position.set(0.8, 0.4, 0.8); lavaProp.add(ember);
+    } else {
+      const spikeH = 5 + Math.random()*4;
+      const spike = new THREE.Mesh(new THREE.ConeGeometry(1.1, spikeH, 6), obsidianMat);
+      spike.position.y = spikeH/2; lavaProp.add(spike);
+      const tip = new THREE.Mesh(new THREE.ConeGeometry(0.35, 1.2, 6), emberMat);
+      tip.position.y = spikeH + 0.3; lavaProp.add(tip);
+    }
+    g.add(lavaProp);
+
     g.userData = {
-      sand: sandProp, glass: glassProp,
+      sand: sandProp, glass: glassProp, cyber: cyberProp, lava: lavaProp,
       off: ROAD_HALF + 3.5 + Math.random()*8,
       side: (i % 4 < 2) ? -1 : 1,
     };
@@ -548,25 +740,68 @@ function buildWorld(){
   ballLight.position.set(0, 6, -4);
   scene.add(ballLight);
 
+  /* sombras dinâmicas: discos escuros projetados na pista, seguindo o sol/lua */
+  const shadowGeo = new THREE.CircleGeometry(1, 20);
+  playerShadowMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0, depthWrite: false });
+  targetShadowMat = playerShadowMat.clone();
+  playerShadow = new THREE.Mesh(shadowGeo, playerShadowMat);
+  playerShadow.rotation.x = -Math.PI/2;
+  playerShadow.renderOrder = 1;
+  playerShadow.visible = false;
+  scene.add(playerShadow);
+  for (let i = 0; i < POOL_SIZE; i++){
+    const s = new THREE.Mesh(shadowGeo, targetShadowMat);
+    s.rotation.x = -Math.PI/2;
+    s.renderOrder = 1;
+    s.visible = false;
+    scene.add(s);
+    targetShadows.push(s);
+  }
+
   camera.position.set(0, 4.6, 10);
 }
 
 function setTheme(t){
+  if (!THEME_KEYS.includes(t)) t = 'sand';
   theme = t;
-  const sand = t === 'sand';
-  for (const s of segments){ s.userData.sand.visible = sand; s.userData.glass.visible = !sand; }
-  for (const p of props){ p.userData.sand.visible = sand; p.userData.glass.visible = !sand; }
-  ground.visible = sand;
-  for (const d of dunes) d.visible = sand;
-  for (const m of mountains) m.visible = !sand;
+  for (const s of segments) for (const k of THEME_KEYS) s.userData[k].visible = k === t;
+  for (const p of props)    for (const k of THEME_KEYS) p.userData[k].visible = k === t;
+  ground.visible      = t === 'sand';
+  cyberGround.visible = t === 'cyber';
+  lavaGround.visible  = t === 'lava';
+  for (const d of dunes)     d.visible = t === 'sand';
+  for (const m of mountains) m.visible = t === 'glass';
+  for (const b of buildings) b.visible = t === 'cyber';
+  for (const v of volcanoes) v.visible = t === 'lava';
 }
 
 /* ============================== HELPERS ============================== */
 const curveX = d => (d > 0 ? curve * d * d * CURVE_K : 0);
 
+/* escolhe um z de spawn mantendo distância mínima dos demais alvos ativos,
+   para eles não aparecerem colados um após o outro */
+const TARGET_GAP = 45;
+function spawnZ(self){
+  for (let t = 0; t < 24; t++){
+    const z = -(320 + Math.random() * 500);
+    let ok = true;
+    for (const o of targets){
+      if (o === self || !o.userData.active) continue;
+      if (Math.abs(o.userData.z - z) < TARGET_GAP){ ok = false; break; }
+    }
+    if (ok) return z;
+  }
+  /* sem vaga no alcance normal: coloca depois do alvo mais distante */
+  let far = -320;
+  for (const o of targets){
+    if (o !== self && o.userData.active) far = Math.min(far, o.userData.z);
+  }
+  return far - TARGET_GAP;
+}
+
 function respawnTarget(v, far){
   const u = v.userData;
-  if (far !== false) u.z = -(420 + Math.random() * 460);
+  if (far !== false) u.z = spawnZ(v);
   u.lane = (Math.random() * 2 - 1) * (ROAD_HALF - TARGET_R - 0.5);
   u.kind = Math.random() < 0.6 ? 'ball' : 'pin';
   u.colorIdx = (Math.random() * SAND_PALETTE.length) | 0;
@@ -743,10 +978,10 @@ function update(dt){
   const left_ = keys['arrowleft'] || keys['a'] || touch.l;
   const right = keys['arrowright']|| keys['d'] || touch.r;
 
-  /* aceleração automática */
-  speed += 42 * dt;
+  /* aceleração automática (bem suave, para a bola rolar devagar) */
+  speed += 12 * dt;
   /* subida segura a bola; descida embala */
-  speed -= slopeAt(0) * 26 * dt;
+  speed -= slopeAt(0) * 12 * dt;
   speed = Math.max(0, Math.min(MAX_SPEED, speed));
 
   curveTimer -= dt;
@@ -785,8 +1020,10 @@ function update(dt){
   }
 
   /* alvos */
-  for (const v of targets){
+  for (let ti = 0; ti < targets.length; ti++){
+    const v = targets[ti], sh = targetShadows[ti];
     const u = v.userData;
+    sh.visible = false;
     if (!u.active) continue;
     u.z += dz;
 
@@ -806,16 +1043,28 @@ function update(dt){
     v.position.set(u.lane + curveX(d), baseY + u.fy, u.z);
     if (!u.flying) v.rotation.y = Math.atan(2 * curve * CURVE_K * Math.max(0, d));
 
+    /* sombra do alvo, projetada na pista conforme o sol/lua */
+    if (shadow.op > 0.01 && u.fy > -1){
+      const th = (u.kind === 'ball' ? TARGET_R : 1.65 * PIN_S) + Math.max(0, u.fy);
+      sh.visible = true;
+      sh.position.set(v.position.x + shadow.kx * th, yAt(d) + 0.06, u.z + shadow.kz * th);
+      sh.rotation.x = -Math.PI/2 + Math.atan(slopeAt(d));
+      sh.rotation.z = shadow.rot;
+      const tr = (u.kind === 'ball' ? TARGET_R : 0.85 * PIN_S) * 0.95;
+      sh.scale.set(tr * shadow.stretch, tr, 1);
+    }
+
     /* acerto! (não vale se a bola estiver no ar) */
     const halfW = u.kind === 'ball' ? TARGET_R : 0.85 * PIN_S;
     if (!u.flying && jumpY < 1.0 && Math.abs(u.z) < (u.kind === 'ball' ? TARGET_R : 0.6 * PIN_S) + BALL_R + 0.4 &&
-        Math.abs(v.position.x - px) < halfW + BALL_R && speed > 5){
+        Math.abs(v.position.x - px) < halfW + BALL_R && speed > 3){
       totalHits++;
       if (left > 0){ left--; if (left === 0) sndDay(); }
       shake = Math.max(shake, 0.35);
       if (u.kind === 'ball'){
         spawnBurst(v.position.x, v.position.y, u.z, burstMats[u.colorIdx]);
         sndSand();
+        vibrate(80);
         respawnTarget(v);
       } else {
         u.flying = true; u.life = 1.5;
@@ -823,6 +1072,7 @@ function update(dt){
         u.vz = -(6 + Math.random() * 10);
         u.vr = 6 + Math.random() * 8;
         sndPin();
+        vibrate([40, 30, 60]);
       }
     }
   }
@@ -866,7 +1116,27 @@ function update(dt){
   moonMesh.position.set(300, -elev * 450 + 40, -1300);
   moonMesh.visible = -elev > -0.05;
 
-  ballLight.intensity = isNight() ? (theme === 'glass' ? 1.2 : 2.0) : 0;
+  /* sombras projetadas: direção, alongamento e força seguem o astro dominante.
+     Sol baixo = sombra longa e deslocada; noite = sombra fraca da lua */
+  if (elev > 0.04){
+    const ly = elev * 500 + 40;
+    shadow.kx = Math.min(2.5, 350 / ly);
+    shadow.kz = Math.min(2.0, 650 / ly);
+    shadow.op = 0.34 * Math.min(1, elev * 2.5);
+  } else if (elev < -0.04){
+    const ly = -elev * 450 + 40;
+    shadow.kx = Math.max(-2.5, -300 / ly);
+    shadow.kz = Math.min(2.0, 650 / ly);
+    shadow.op = 0.13 * Math.min(1, -elev * 2.5);
+  } else {
+    shadow.op = 0;
+  }
+  shadow.stretch = 1 + Math.min(1.6, Math.hypot(shadow.kx, shadow.kz) * 0.5);
+  shadow.rot = -Math.atan2(shadow.kz, shadow.kx);
+  targetShadowMat.opacity = shadow.op;
+
+  /* pistas que já brilham no escuro precisam de menos luz extra */
+  ballLight.intensity = isNight() ? ({ glass: 1.2, cyber: 1.2, lava: 1.5, sand: 2.0 }[theme]) : 0;
   ballLight.position.set(px, 7, -3);
   playerMat.emissiveIntensity = 0.7 * nightGlow();
 
@@ -887,6 +1157,18 @@ function update(dt){
   playerSpin.rotation.x -= dz / BALL_R;
   playerGrp.rotation.z += (-steer * 0.16 - playerGrp.rotation.z) * Math.min(1, dt * 8);
 
+  /* sombra da bola: desloca conforme o sol/lua e esmaece quando a bola pula */
+  playerShadow.visible = shadow.op > 0.01;
+  if (playerShadow.visible){
+    const ph = BALL_R + jumpY;
+    playerShadow.position.set(px + shadow.kx * ph, 0.06, shadow.kz * ph);
+    playerShadow.rotation.x = -Math.PI/2 + Math.atan(slopeAt(0));
+    playerShadow.rotation.z = shadow.rot;
+    const pr = BALL_R * 0.95;
+    playerShadow.scale.set(pr * shadow.stretch, pr, 1);
+    playerShadowMat.opacity = shadow.op * Math.max(0.25, 1 - jumpY * 0.10);
+  }
+
   shake = Math.max(0, shake - dt * 1.6);
   const sx = (Math.random()-0.5) * shake, sy = (Math.random()-0.5) * shake * 0.6;
   camera.position.x += ((px * 0.7 + sx) - camera.position.x) * Math.min(1, dt*5);
@@ -895,7 +1177,7 @@ function update(dt){
 
   if (engGain){
     engGain.gain.value = state === 'play' && speed > 2 ? 0.03 : 0;
-    engOsc.frequency.value = 38 + speed * 0.85;
+    engOsc.frequency.value = 38 + speed * 2.3;
   }
 
   /* HUD */
