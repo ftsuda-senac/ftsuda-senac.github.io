@@ -185,6 +185,11 @@ function beep(freq, dur = 0.08, type = 'square', vol = 0.12, delay = 0){
 const sndMove   = () => beep(220, 0.05, 'square', 0.07);
 const sndRotate = () => beep(340, 0.06, 'square', 0.09);
 const sndLock   = () => beep(140, 0.09, 'triangle', 0.14);
+function sndLand(){ // baque quando a peça toca o chão
+  beep(220, 0.04, 'square', 0.1);
+  beep(90, 0.13, 'triangle', 0.24, 0.02);
+  beep(55, 0.1, 'sine', 0.2, 0.04);
+}
 function sndClear(ch){
   const base = 440 * Math.pow(1.25, ch - 1);
   beep(base, 0.1, 'square', 0.12, 0);
@@ -677,7 +682,10 @@ function animate(now){
     while (fallAcc >= 1 && state === 'play') {
       fallAcc -= 1;
       if (piece.y <= colHeight(piece.col)) lockPiece();
-      else piece.y--;
+      else {
+        piece.y--;
+        if (piece.y === colHeight(piece.col)) sndLand();
+      }
     }
     if (state === 'play') {
       for (let i = 0; i < 3; i++)

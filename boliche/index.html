@@ -195,7 +195,7 @@ const prefs = {
 /* ============================== ESTADO ============================== */
 let scene, camera, renderer, clock;
 let sunLight, hemiLight, sunMesh, moonMesh, ballLight;
-let ground, cyberGround, lavaGround;
+let ground, glassGround, cyberGround, lavaGround;
 let dunes = [], mountains = [], buildings = [], volcanoes = [];
 const THEME_KEYS = ['sand', 'glass', 'cyber', 'lava'];
 let segments = [], props = [], targets = [], particles = [];
@@ -529,7 +529,11 @@ function buildWorld(){
     v.add(glow);
     scene.add(v); volcanoes.push(v);
   }
-  /* chão distante de cada tema novo */
+  /* chão distante de cada tema */
+  glassGround = new THREE.Mesh(new THREE.PlaneGeometry(6000, 6000),
+    new THREE.MeshLambertMaterial({ color: 0x10092a }));
+  glassGround.rotation.x = -Math.PI/2; glassGround.position.set(0, -36, -800);
+  scene.add(glassGround);
   cyberGround = new THREE.Mesh(new THREE.PlaneGeometry(6000, 6000),
     new THREE.MeshLambertMaterial({ color: 0x06060f }));
   cyberGround.rotation.x = -Math.PI/2; cyberGround.position.set(0, -36, -800);
@@ -570,6 +574,29 @@ function buildWorld(){
   const lavaBermMat  = new THREE.MeshLambertMaterial({ color: 0x1a0d08 });
   const emberMat     = new THREE.MeshLambertMaterial({ color: 0x220400, emissive: 0xff6a00 });
 
+  /* acostamento externo de cada tema (como a grama do Enduro): terreno largo
+     dos dois lados da pista, acompanhando curvas e relevo, para os adereços
+     laterais não parecerem flutuar */
+  const SIDE_W = 60;
+  const sideGeo = new THREE.PlaneGeometry(SIDE_W, SEG_LEN + 1.2);
+  const sandSideTex = makeSandTexture(0xcfae6e, 256, 6000);
+  sandSideTex.repeat.set(4, 1);
+  const sandSideMat  = new THREE.MeshLambertMaterial({ map: sandSideTex });
+  const glassSideMat = new THREE.MeshLambertMaterial({ color: 0x150d2e, emissive: 0x0a0618 });
+  const cyberSideMat = new THREE.MeshLambertMaterial({ color: 0x08080f });
+  /* terra cinza-avermelhada, sem brilho próprio */
+  const lavaSideTex = makeSandTexture(0x6b4a42, 256, 6000);
+  lavaSideTex.repeat.set(4, 1);
+  const lavaSideMat = new THREE.MeshLambertMaterial({ map: lavaSideTex });
+  function addSides(grp, mat){
+    for (const s of [-1, 1]){
+      const m = new THREE.Mesh(sideGeo, mat);
+      m.rotation.x = -Math.PI/2;
+      m.position.set(s * (ROAD_HALF + 0.5 + SIDE_W/2), -0.08, 0);
+      grp.add(m);
+    }
+  }
+
   for (let i = 0; i < N_SEG; i++){
     const g = new THREE.Group();
 
@@ -580,6 +607,7 @@ function buildWorld(){
       const berm = new THREE.Mesh(new THREE.BoxGeometry(1.8, 1.4, SEG_LEN + 0.4), sandBermMat);
       berm.position.set(x + Math.sign(x)*0.9, 0.55, 0); sand.add(berm);
     }
+    addSides(sand, sandSideMat);
     g.add(sand);
 
     const glass = new THREE.Group();
@@ -593,6 +621,7 @@ function buildWorld(){
       const e = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.25, SEG_LEN + 0.4), glassEdgeMat);
       e.position.set(x, 0.1, 0); glass.add(e);
     }
+    addSides(glass, glassSideMat);
     g.add(glass);
 
     const cyber = new THREE.Group();
@@ -602,6 +631,7 @@ function buildWorld(){
     eL.position.set(-ROAD_HALF - 0.6, 0.2, 0); cyber.add(eL);
     const eR = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, SEG_LEN + 0.4), neonEdgeMatR);
     eR.position.set(ROAD_HALF + 0.6, 0.2, 0); cyber.add(eR);
+    addSides(cyber, cyberSideMat);
     g.add(cyber);
 
     const lava = new THREE.Group();
@@ -613,6 +643,7 @@ function buildWorld(){
       const strip = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.2, SEG_LEN + 0.4), emberMat);
       strip.position.set(x, 0.1, 0); lava.add(strip);
     }
+    addSides(lava, lavaSideMat);
     g.add(lava);
 
     g.userData = { sand, glass, cyber, lava };
@@ -767,6 +798,7 @@ function setTheme(t){
   for (const s of segments) for (const k of THEME_KEYS) s.userData[k].visible = k === t;
   for (const p of props)    for (const k of THEME_KEYS) p.userData[k].visible = k === t;
   ground.visible      = t === 'sand';
+  glassGround.visible = t === 'glass';
   cyberGround.visible = t === 'cyber';
   lavaGround.visible  = t === 'lava';
   for (const d of dunes)     d.visible = t === 'sand';

@@ -44,6 +44,8 @@
                 font-family:inherit;font-size:clamp(15px,3vw,20px);letter-spacing:4px;cursor:pointer;font-weight:bold}
   .overlay .btn:active{transform:scale(.96)}
   .hidden{display:none !important}
+  #eggFog,#eggIce{pointer-events:auto}
+  .egg-on{color:#9fd8ff;text-shadow:0 0 8px #9fd8ff,0 2px 0 #000}
   @media (max-height:480px){
     .overlay{padding:14px}
     .overlay-inner{padding:8px 0}
@@ -88,7 +90,7 @@
       Se um carro passar você, ele volta para a conta.<br>
       A cada dia o tráfego fica mais rápido e mais denso.<br><br>
       ▲ acelerar &nbsp; ▼ frear &nbsp; ◀ ▶ dirigir &nbsp; (ou WASD)<br>
-      Cuidado com caminhões, vans, neblina, pista escorregadia e a noite…
+      Cuidado com caminhões, vans, <span id="eggFog">neblina</span>, <span id="eggIce">pista escorregadia</span> e a noite…
     </p>
     <div class="record" id="menuRecord"></div>
     <button class="btn" id="startBtn">INICIAR</button>
@@ -206,6 +208,8 @@ function blip(freq, dur, vol, type){
   o.connect(g).connect(AC.destination);
   o.start(); o.stop(AC.currentTime + dur);
 }
+/* vibração nas colisões (celulares; ignorado onde não há suporte) */
+const vibrate = ms => { try { if (navigator.vibrate) navigator.vibrate(ms); } catch(e){} };
 const sndPass  = () => blip(880, .09, .05);
 const sndCrash = () => { blip(90, .4, .18, 'sawtooth'); blip(60, .5, .15, 'square'); };
 const sndDay   = () => { blip(660,.12,.06); setTimeout(()=>blip(880,.12,.06),130); setTimeout(()=>blip(1100,.18,.06),260); };
@@ -305,7 +309,9 @@ function makeVehicle(type, color){
     addWheels(g, 1.06, [-1.35, 1.35], 0.7);
     addLights(g, halfLen, 0.78);
   }
-  g.userData = { type, halfLen, halfWid, speedMul, speed: 0, lane: 0, z: -500, counted: false, active: true };
+  g.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  g.userData = { type, halfLen, halfWid, speedMul, speed: 0, baseSpeed: 0,
+                 lane: 0, laneX: 0, z: -500, counted: false, active: true };
   return g;
 }
 
@@ -319,17 +325,30 @@ function buildWorld(){
   renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('c'), antialias: true });
   renderer.setSize(innerWidth, innerHeight);
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
   hemiLight = new THREE.HemisphereLight(0xcfe8ff, 0x3a5a2a, 0.9);
   scene.add(hemiLight);
   sunLight = new THREE.DirectionalLight(0xfff3d0, 1.0);
   sunLight.position.set(-200, 300, -400);
-  scene.add(sunLight);
+  sunLight.castShadow = true;
+  sunLight.shadow.mapSize.set(1024, 1024);
+  sunLight.shadow.camera.left = -140;
+  sunLight.shadow.camera.right = 140;
+  sunLight.shadow.camera.top = 140;
+  sunLight.shadow.camera.bottom = -140;
+  sunLight.shadow.camera.near = 10;
+  sunLight.shadow.camera.far = 1200;
+  sunLight.shadow.bias = -0.0004;
+  sunLight.target.position.set(0, 0, -80);
+  scene.add(sunLight, sunLight.target);
 
   grassMat = new THREE.MeshLambertMaterial({ color: 0x3f7a2e });
   /* chão distante rebaixado: a pista sobe e desce sobre ele sem ser engolida */
   const ground = new THREE.Mesh(new THREE.PlaneGeometry(5000, 5000), grassMat);
   ground.rotation.x = -Math.PI/2; ground.position.y = -38; ground.position.z = -800;
+  ground.receiveShadow = true;
   scene.add(ground);
 
   const mMat = new THREE.MeshLambertMaterial({ color: 0x4a5a4a });
@@ -355,9 +374,9 @@ function buildWorld(){
     const g = new THREE.Group();
     /* faixa de grama larga por segmento: o acostamento acompanha o relevo */
     const lawn = new THREE.Mesh(new THREE.PlaneGeometry(90, SEG_LEN + 0.6), grassMat);
-    lawn.rotation.x = -Math.PI/2; lawn.position.y = -0.05; g.add(lawn);
+    lawn.rotation.x = -Math.PI/2; lawn.position.y = -0.05; lawn.receiveShadow = true; g.add(lawn);
     const plane = new THREE.Mesh(new THREE.PlaneGeometry(ROAD_W + 1.6, SEG_LEN + 0.4), roadMat);
-    plane.rotation.x = -Math.PI/2; g.add(plane);
+    plane.rotation.x = -Math.PI/2; plane.receiveShadow = true; g.add(plane);
     for (const x of [-2.5, 2.5]){
       const d = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.02, SEG_LEN * 0.45), dashMat);
       d.position.set(x, 0.02, 0); g.add(d);
@@ -383,6 +402,7 @@ function buildWorld(){
         new THREE.MeshLambertMaterial({ color: 0xcc3322 }));
       top.position.y = 2.8; g.add(top);
       g.userData.off = ROAD_HALF + 2.2;
+      g.userData.isPost = true;
     } else {
       const t = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.5, 3, 6), trunkMat);
       t.position.y = 1.5; g.add(t);
@@ -392,6 +412,7 @@ function buildWorld(){
     }
     g.userData.side = (i % 4 < 2) ? -1 : 1;
     g.position.z = -i * 72;
+    g.traverse(o => { if (o.isMesh) o.castShadow = true; });
     scene.add(g);
     props.push(g);
   }
@@ -427,7 +448,61 @@ function respawnVehicle(v, far){
   u.lane = LANES[(Math.random()*3)|0];
   const frac = diff.speedMin + Math.random() * (diff.speedMax - diff.speedMin);
   u.speed = MAX_SPEED * frac * u.speedMul;
+  u.baseSpeed = u.speed;
+  u.laneX = u.lane;
   u.counted = false;
+}
+
+/* IA do tráfego: um carro mais rápido não atravessa o da frente.
+   Ao alcançá-lo, tenta ultrapassar por uma faixa adjacente livre;
+   sem espaço, iguala a velocidade e mantém distância mínima. */
+function laneIsFree(self, laneX, zRef){
+  // faixa colada no jogador não é opção de ultrapassagem
+  if (Math.abs(zRef) < 30 && Math.abs(px - laneX) < 2.6) return false;
+  for (const o of traffic){
+    if (o === self || !o.userData.active) continue;
+    const ou = o.userData;
+    if (Math.abs(ou.lane - laneX) > 2.4 && Math.abs(ou.laneX - laneX) > 2.4) continue;
+    if (Math.abs(ou.z - zRef) < self.userData.halfLen + ou.halfLen + 16) return false;
+  }
+  return true;
+}
+function trafficAI(){
+  for (const v of traffic){
+    const u = v.userData;
+    if (!u.active) continue;
+    // carro imediatamente à frente na mesma faixa
+    let front = null;
+    for (const o of traffic){
+      if (o === v || !o.userData.active) continue;
+      const ou = o.userData;
+      if (Math.abs(ou.lane - u.lane) > 2.4) continue;
+      if (ou.z >= u.z || u.z - ou.z > 90) continue;
+      if (!front || ou.z > front.z) front = ou;
+    }
+    if (!front){ u.speed = u.baseSpeed; continue; }
+
+    const gap = u.z - front.z;
+    const minGap = u.halfLen + front.halfLen + 2.5;
+    const followGap = minGap + 14;
+
+    if (gap < followGap && u.baseSpeed > front.speed + 0.5){
+      const li = LANES.indexOf(u.lane);
+      let moved = false;
+      for (const ln of [LANES[li - 1], LANES[li + 1]]){
+        if (ln !== undefined && laneIsFree(v, ln, u.z)){
+          u.lane = ln; u.speed = u.baseSpeed; moved = true; break;
+        }
+      }
+      if (!moved) u.speed = Math.min(u.speed, front.speed);
+    } else if (gap > followGap + 10){
+      u.speed = u.baseSpeed;             // pista livre de novo: retoma o ritmo
+    }
+    if (gap < minGap){                   // nunca sobrepõe o da frente
+      u.z = front.z + minGap;
+      u.speed = Math.min(u.speed, front.speed);
+    }
+  }
 }
 
 function applyDifficulty(){
@@ -475,7 +550,7 @@ function gameOver(){
 
 function resetGame(){
   speed = 0; px = 0; curve = 0; curveTarget = 0; curveTimer = 0;
-  dayTime = 0; day = 1; carsLeft = QUOTA(1); weather = 'clear';
+  dayTime = 0; day = 1; carsLeft = QUOTA(1); weather = forcedWeather || 'clear';
   crashTimer = 0; shake = 0; totalPassed = 0; km = 0; travel = 0;
   applyWeather();
   traffic.forEach((v, i) => { v.userData.z = -200 - i * 80; respawnVehicle(v, false); });
@@ -498,6 +573,27 @@ function bindTouch(id, prop){
   el.addEventListener('pointerleave', off);
 }
 bindTouch('btnL','l'); bindTouch('btnR','r'); bindTouch('btnB','b');
+
+/* easter-egg: 3 toques rápidos em "neblina" ou "pista escorregadia" no menu
+   fazem o dia 1 começar naquele clima (a palavra acesa indica o modo ativo) */
+let forcedWeather = null;
+function bindEgg(id, w){
+  const el = document.getElementById(id);
+  let taps = 0, t0 = 0;
+  el.addEventListener('click', () => {
+    const now = performance.now();
+    if (now - t0 > 1500) taps = 0;
+    t0 = now; taps++;
+    if (taps >= 3){
+      taps = 0;
+      forcedWeather = forcedWeather === w ? null : w;
+      document.getElementById('eggFog').classList.toggle('egg-on', forcedWeather === 'fog');
+      document.getElementById('eggIce').classList.toggle('egg-on', forcedWeather === 'ice');
+      initAudio(); blip(forcedWeather ? 1100 : 500, .12, .05);
+    }
+  });
+}
+bindEgg('eggFog','fog'); bindEgg('eggIce','ice');
 
 document.getElementById('startBtn').onclick = () => {
   initAudio(); if (AC && AC.state === 'suspended') AC.resume();
@@ -568,9 +664,15 @@ function update(dt){
     const d = -p.position.z;
     p.position.x = p.userData.side * p.userData.off + curveX(d);
     p.position.y = yAt(d);
+    // colisão com poste: devolve o carro à borda da pista mais próxima do impacto
+    if (p.userData.isPost && Math.abs(p.position.z) < 2.4 && Math.abs(p.position.x - px) < 1.5){
+      px = Math.sign(px) * (ROAD_HALF - 0.5);
+      speed = Math.min(speed, 12); crashTimer = 0.8; shake = 0.8;
+      sndCrash(); vibrate(150);
+    }
   }
 
-  // tráfego
+  // tráfego — movimento e contagem
   for (const v of traffic){
     const u = v.userData;
     if (!u.active) continue;
@@ -589,16 +691,24 @@ function update(dt){
       totalPassed = Math.max(0, totalPassed - 1);
       carsLeft++;
     }
+  }
 
+  trafficAI();
+
+  // tráfego — posicionamento e colisão
+  for (const v of traffic){
+    const u = v.userData;
+    if (!u.active) continue;
     const d = -u.z;
-    v.position.set(u.lane + curveX(d), yAt(d), u.z);
-    v.rotation.y = Math.atan(2 * curve * CURVE_K * Math.max(0, d));
+    u.laneX += (u.lane - u.laneX) * Math.min(1, dt * 2.2);   // troca de faixa suave
+    v.position.set(u.laneX + curveX(d), yAt(d), u.z);
+    v.rotation.y = Math.atan(2 * curve * CURVE_K * Math.max(0, d)) - (u.lane - u.laneX) * 0.1;
     v.rotation.x = Math.atan(slopeAt(d));
 
     // colisão (dimensões por tipo de veículo) — bater NÃO encerra o jogo, só custa tempo
     if (Math.abs(u.z) < u.halfLen + 1.6 && Math.abs(v.position.x - px) < u.halfWid + 1.05 && speed > 8){
       speed = 12; crashTimer = 0.9; shake = 0.9;
-      u.z -= 30 + u.halfLen * 4; sndCrash();
+      u.z -= 30 + u.halfLen * 4; sndCrash(); vibrate(200);
     }
   }
 
@@ -616,12 +726,14 @@ function update(dt){
   if (carsLeft > 0 && sec <= 10 && sec !== lastTick){ lastTick = sec; sndTick(); }
 
   const sk = skyAt(dayTime);
-  scene.background = sk.sky;
-  const fogC = weather === 'fog' ? sk.fog.clone().lerp(new THREE.Color(0xffffff), 0.25) : sk.fog;
+  // clareia a névoa só na proporção da luz do dia: à noite ela permanece escura
+  const fogC = weather === 'fog' ? sk.fog.clone().lerp(new THREE.Color(0xffffff), 0.4 * Math.min(1, sk.sun)) : sk.fog;
+  // neblina densa: encobre também o céu, fechando a visibilidade à frente
+  scene.background = weather === 'fog' ? fogC : sk.sky;
   scene.fog.color.copy(fogC);
-  if (weather === 'fog'){ scene.fog.near = 25; scene.fog.far = 220; }
+  if (weather === 'fog'){ scene.fog.near = 6; scene.fog.far = 115; }
   else { scene.fog.near = 150; scene.fog.far = 850; }
-  sunLight.intensity = sk.sun;
+  sunLight.intensity = weather === 'fog' ? sk.sun * 0.45 : sk.sun;
   hemiLight.intensity = sk.amb;
 
   const ang = dayTime * Math.PI * 2;
@@ -630,6 +742,9 @@ function update(dt){
   sunMesh.visible = elev > -0.08;
   moonMesh.position.set(300, -elev * 450 + 40, -1300);
   moonMesh.visible = -elev > -0.05;
+
+  // o sol acompanha a hora do dia: as sombras giram e se alongam ao amanhecer/entardecer
+  sunLight.position.set(-Math.cos(ang) * 320, Math.max(0.12, elev) * 380 + 50, -160);
 
   headLight.intensity = isNight() ? 2.4 : 0;
   headLight.position.set(px, 1.4, -1);
