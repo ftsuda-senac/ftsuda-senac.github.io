@@ -1,4 +1,4 @@
-const CACHE_NAME = "boliche3d-v10";
+const CACHE_NAME = "boliche3d-v15";
 const ASSETS = [
   "./",
   "./index.html",

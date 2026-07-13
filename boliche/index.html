@@ -41,6 +41,8 @@
   .overlay .btn{margin-top:20px;background:#a33;color:#fff;border:3px solid #ffd24a;padding:14px 34px;
                 font-family:inherit;font-size:clamp(15px,3vw,20px);letter-spacing:4px;cursor:pointer;font-weight:bold}
   .overlay .btn:active{transform:scale(.96)}
+  .overlay .btn.secondary{display:block;margin:14px auto 0;background:#223244;border-color:#9fb8d8;
+                          color:#cfd6ff;padding:10px 26px;font-size:clamp(13px,2.6vw,17px)}
   .optlabel{margin-top:18px;color:#9fb8d8;letter-spacing:3px;font-weight:bold;font-size:clamp(12px,2.4vw,15px)}
   .swatches{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:10px}
   .swatch{width:38px;height:38px;border-radius:50%;border:3px solid #555;cursor:pointer;padding:0}
@@ -73,7 +75,7 @@
 <div class="hud">
   <div class="box" id="dayLbl">DIA 1</div>
   <div class="box" id="timer">01:40</div>
-  <div class="box" id="counter">FALTAM 30</div>
+  <div class="box" id="counter">FALTAM 20</div>
   <div class="box" id="speed">0 km/h</div>
   <div class="box" id="pauseBtn">⏸</div>
 </div>
@@ -90,23 +92,46 @@
     <p>
       Role sua bola de boliche pela pista e <b>acerte os alvos</b> antes que o
       <b>contador do dia chegue a zero</b>.<br>
-      Dia 1: 30 alvos &nbsp;•&nbsp; cada dia seguinte pede +5 alvos<br>
-      Bolas de areia <b>desmancham</b> • Pinos <b>voam pelos ares</b><br>
+      Dia 1: 20 alvos &nbsp;•&nbsp; cada dia seguinte pede +5 alvos e a bola fica um pouco mais rápida<br>
+      Bolas de areia, frutas e legumes <b>desmancham</b> • Pinos, letras e números <b>voam pelos ares</b><br>
+      Uma voz fala o que você acertar — <b>em inglês ou português</b>, à sua escolha!<br>
       A pista tem curvas, subidas e descidas — mas a bola nunca cai dela.<br><br>
       A bola acelera sozinha! &nbsp; ◀ ▶ direção &nbsp; (ou A/D / toque)<br>
       ESPAÇO ou toque na tela: <b>pular</b> &nbsp;•&nbsp; P: pausar
     </p>
+    <div class="record" id="menuRecord"></div>
+    <button class="btn" id="startBtn">INICIAR</button>
+    <button class="btn secondary" id="cfgBtn">⚙ CONFIGURAÇÕES</button>
+  </div>
+</div>
+
+<div class="overlay hidden" id="config">
+  <div class="overlay-inner">
+    <h1>OPÇÕES</h1>
+    <div class="optlabel">MODO</div>
+    <div class="tracks">
+      <button class="trackbtn modebtn" data-mode="padrao">🎳 PADRÃO</button>
+      <button class="trackbtn modebtn" data-mode="letras">🔠 LETRAS E NÚMEROS</button>
+      <button class="trackbtn modebtn" data-mode="frutas">🍉 FRUTAS E LEGUMES</button>
+    </div>
+    <div class="optlabel">IDIOMA DA VOZ</div>
+    <div class="tracks">
+      <button class="trackbtn langbtn" data-lang="en">🔊 INGLÊS</button>
+      <button class="trackbtn langbtn" data-lang="pt">🔊 PORTUGUÊS (BR)</button>
+    </div>
     <div class="optlabel">COR DA BOLA</div>
     <div class="swatches" id="swatches"></div>
     <div class="optlabel">PISTA</div>
     <div class="tracks">
       <button class="trackbtn" id="trkSand" data-track="sand">🏜 AREIA</button>
-      <button class="trackbtn" id="trkGlass" data-track="glass">🌈 VIDRO</button>
+      <button class="trackbtn" id="trkGlass" data-track="glass">💎 VIDRO</button>
       <button class="trackbtn" id="trkCyber" data-track="cyber">🌆 CYBERPUNK</button>
       <button class="trackbtn" id="trkLava" data-track="lava">🌋 LAVA</button>
+      <button class="trackbtn" id="trkSnow" data-track="snow">❄ NEVE</button>
+      <button class="trackbtn" id="trkField" data-track="field">🌳 CAMPO</button>
+      <button class="trackbtn" id="trkRainbow" data-track="rainbow">🌈 ARCO-ÍRIS</button>
     </div>
-    <div class="record" id="menuRecord"></div>
-    <button class="btn" id="startBtn">INICIAR</button>
+    <button class="btn" id="cfgBack">VOLTAR</button>
   </div>
 </div>
 
@@ -115,6 +140,17 @@
     <h1>PAUSA</h1>
     <p>Pressione P ou toque no botão para continuar.</p>
     <button class="btn" id="btnResume">CONTINUAR</button>
+    <button class="btn secondary" id="btnQuit">🚪 SAIR DO JOGO</button>
+  </div>
+</div>
+
+<div class="overlay hidden" id="quit">
+  <div class="overlay-inner">
+    <h1>SAIR?</h1>
+    <p>Tem certeza que deseja sair e voltar para a tela inicial?<br>
+       O progresso desta partida será <b>perdido</b>.</p>
+    <button class="btn" id="quitYes">SIM, SAIR</button>
+    <button class="btn secondary" id="quitNo">NÃO, CONTINUAR JOGANDO</button>
   </div>
 </div>
 
@@ -136,11 +172,13 @@
 const SEG_LEN = 15, N_SEG = 62;
 const ROAD_W  = 15, ROAD_HALF = ROAD_W / 2;
 const CURVE_K = 0.00012;
-const MAX_SPEED = 35;                 // bola rolando bem devagar
-const SPEED_DISPLAY = 36 / MAX_SPEED;
+const BASE_SPEED = 24;                // velocidade máxima da bola no dia 1 (bem devagar)
+const SPEED_STEP = 2;                 // a cada dia a bola fica levemente mais rápida
+const SPEED_CAP  = 40;                // limite absoluto de velocidade
+const SPEED_DISPLAY = 36 / SPEED_CAP;
 const DAY_LENGTH = 100;               // segundos por dia (contador regressivo)
 const POOL_SIZE = 12;                 // alvos no pool (ativos crescem por dia)
-const QUOTA = d => 25 + 5 * d;        // dia 1: 30, dia 2: 35, dia 3: 40, ...
+const QUOTA = d => 15 + 5 * d;        // dia 1: 20, dia 2: 25, dia 3: 30, ...
 const BALL_R = 1.3;                   // raio da bola do jogador
 const TARGET_R = 2.0;                 // raio das bolas de areia alvo
 const PIN_S = 1.6;                    // escala do pino (altura ~5.4)
@@ -149,7 +187,10 @@ const RAIL = ROAD_HALF - BALL_R;      // guard-rail invisível: a bola nunca sai
 
 /* dificuldade progressiva por dia */
 function difficulty(d){
-  return { active: Math.min(POOL_SIZE, 7 + d) };
+  return {
+    active: Math.min(POOL_SIZE, 7 + d),
+    speed: Math.min(SPEED_CAP, BASE_SPEED + SPEED_STEP * (d - 1)),
+  };
 }
 
 /* cores selecionáveis da bola do jogador */
@@ -164,7 +205,46 @@ const BALL_COLORS = [
   { id:'preta',    hex:0x1a1a22 },
 ];
 /* paleta das bolas de areia alvo (tons "kinetic sand") */
-const SAND_PALETTE = [0xe8c93a, 0xe88a2a, 0xe84a9a, 0x9a4ae8, 0x2ac8e8, 0x5ae84a];
+const SAND_PALETTE = [
+  0xe8c93a, 0xe88a2a, 0xe84a9a, 0x9a4ae8, 0x2ac8e8, 0x5ae84a,
+  0xd42230, 0x8a5a2a, 0xf0ece0, 0x26262e, 0xc95aee,
+];
+/* nome falado ao acertar cada bola colorida (mesma ordem da paleta) */
+const SAND_COLOR_NAMES = {
+  en: ['yellow',  'orange',  'pink', 'purple', 'blue', 'green',
+       'red',      'brown',  'white',  'black', 'violet'],
+  pt: ['amarelo', 'laranja', 'rosa', 'roxo',   'azul', 'verde',
+       'vermelho', 'marrom', 'branco', 'preto', 'violeta'],
+};
+
+/* modos de jogo: padrão (bolas + pinos), letras e números, frutas */
+const MODE_KEYS = ['padrao', 'letras', 'frutas'];
+/* sequência do modo letras/números: A–Z, 1–20, e de 10 em 10 até 100 */
+const BLOCK_SEQ = (() => {
+  const seq = [];
+  for (let i = 0; i < 26; i++) seq.push(String.fromCharCode(65 + i));
+  for (let n = 1; n <= 20; n++) seq.push(String(n));
+  for (let n = 30; n <= 100; n += 10) seq.push(String(n));
+  return seq;
+})();
+const BLOCK_SIZE = 3.4;               // aresta do bloco de letra/número
+const BLOCK_HALF = BLOCK_SIZE / 2;
+const FRUIT_R = 1.9;                  // raio médio das frutas/legumes (colisão/sombra)
+/* frutas e legumes: nome falado (EN/PT) + cor das partículas do desmanche */
+const FOODS = [
+  { en:'apple',      pt:'maçã',      burst:0xd42230 },
+  { en:'banana',     pt:'banana',    burst:0xf2cc3a },
+  { en:'orange',     pt:'laranja',   burst:0xf28322 },
+  { en:'watermelon', pt:'melancia',  burst:0x2a8a3a },
+  { en:'strawberry', pt:'morango',   burst:0xe83a4a },
+  { en:'grapes',     pt:'uvas',      burst:0x8a3ae8 },
+  { en:'carrot',     pt:'cenoura',   burst:0xf07818 },
+  { en:'tomato',     pt:'tomate',    burst:0xe02830 },
+  { en:'corn',       pt:'milho',     burst:0xf2d24a },
+  { en:'eggplant',   pt:'berinjela', burst:0x5a2a8a },
+  { en:'broccoli',   pt:'brócolis',  burst:0x2a7a2a },
+  { en:'pumpkin',    pt:'abóbora',   burst:0xe8821e },
+];
 
 /* ============================== PLACAR / PREFERÊNCIAS ============================== */
 const _mem = {};
@@ -190,26 +270,34 @@ const best = {
 const prefs = {
   color: store.get('boliche3d.color') || 'azul',
   track: store.get('boliche3d.track') || 'sand',
+  mode:  store.get('boliche3d.mode')  || 'padrao',
+  lang:  store.get('boliche3d.lang')  || 'en',
 };
+if (!MODE_KEYS.includes(prefs.mode)) prefs.mode = 'padrao';
+if (!['en', 'pt'].includes(prefs.lang)) prefs.lang = 'en';
 
 /* ============================== ESTADO ============================== */
 let scene, camera, renderer, clock;
 let sunLight, hemiLight, sunMesh, moonMesh, ballLight;
-let ground, glassGround, cyberGround, lavaGround;
+let ground, glassGround, cyberGround, lavaGround, snowGround, fieldGround, rainbowGround;
 let dunes = [], mountains = [], buildings = [], volcanoes = [];
-const THEME_KEYS = ['sand', 'glass', 'cyber', 'lava'];
+let snowPeaks = [], hills = [], planets = [], stars = null;
+const THEME_KEYS = ['sand', 'glass', 'cyber', 'lava', 'snow', 'field', 'rainbow'];
 let segments = [], props = [], targets = [], particles = [];
 let playerGrp, playerSpin, playerMat;
-let playerShadow, playerShadowMat, targetShadows = [], targetShadowMat;
+let playerShadow, playerShadowMat, targetShadows = [], targetShadowMat, propShadows = [];
 /* parâmetros da sombra projetada, recalculados conforme a posição do sol/lua */
 const shadow = { kx: 0, kz: 0, op: 0, stretch: 1, rot: 0 };
 
 let state = 'menu';
 let theme = prefs.track;
+let gameMode = prefs.mode;
+let blockSeqIdx = 0;        /* posição atual na sequência A–Z / números */
 let speed = 0, px = 0;
+let maxSpeed = BASE_SPEED;             /* cresce um pouco a cada dia */
 let curve = 0, curveTarget = 0, curveTimer = 0;
 let travel = 0;                        // distância total percorrida (para o relevo)
-let dayTime = 0, day = 1, left = 30;
+let dayTime = 0, day = 1, left = 20;
 let shake = 0;
 let totalHits = 0, km = 0;
 let jumpY = 0, jumpVy = 0, airborne = false;
@@ -254,6 +342,91 @@ function vibrate(p){
   if (navigator.vibrate){ try { navigator.vibrate(p); } catch(e){} }
 }
 const sndSand = () => { blip(160, .22, .14, 'triangle'); blip(70, .3, .12, 'sawtooth'); };
+
+/* ===== música de fundo: ABC Song (melodia tradicional, domínio público),
+   como nos vídeos de boliche educativo — toca em loop enquanto o jogo roda ===== */
+const MELODY = [            /* [semitons acima de C4, duração em batidas] */
+  [0,1],[0,1],[7,1],[7,1],[9,1],[9,1],[7,2],                       /* A B C D E F G      */
+  [5,1],[5,1],[4,1],[4,1],[2,.5],[2,.5],[2,.5],[2,.5],[0,2],       /* H I J K LMNO P     */
+  [7,1],[7,1],[5,1],[5,1],[4,1],[4,1],[2,2],                       /* Q R S T U V        */
+  [7,1],[7,1],[5,1],[5,1],[4,1],[4,1],[2,2],                       /* W X Y and Z        */
+  [0,1],[0,1],[7,1],[7,1],[9,1],[9,1],[7,2],                       /* now I know my ABCs */
+  [5,1],[5,1],[4,1],[4,1],[2,1],[2,1],[0,2],                       /* next time sing…    */
+];
+const MUSIC_BPM = 112, MUSIC_BASE = 261.63;   /* C4 */
+let musicIdx = 0, musicNextT = 0, musicGain = null;
+function musicNote(freq, t, dur, vol, type){
+  const o = AC.createOscillator(), g = AC.createGain();
+  o.type = type; o.frequency.value = freq;
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.linearRampToValueAtTime(vol, t + 0.03);
+  g.gain.exponentialRampToValueAtTime(0.001, t + Math.max(0.08, dur * 0.95));
+  o.connect(g).connect(musicGain);
+  o.start(t); o.stop(t + dur);
+}
+function updateMusic(){
+  if (!AC) return;
+  if (!musicGain){
+    musicGain = AC.createGain();
+    musicGain.gain.value = 1;
+    musicGain.connect(AC.destination);
+  }
+  if (musicNextT < AC.currentTime) musicNextT = AC.currentTime + 0.1;
+  /* acorde (I, IV ou V) que acompanha cada nota da melodia: raiz em semitons */
+  const CHORD_ROOT = { 0: 0, 2: -5, 4: 0, 5: 5, 7: 0, 9: 5 };
+  /* agenda as próximas notas com meio segundo de antecedência */
+  while (musicNextT < AC.currentTime + 0.5){
+    const [st, beats] = MELODY[musicIdx];
+    const dur = beats * 60 / MUSIC_BPM;
+    const f = MUSIC_BASE * Math.pow(2, st / 12);
+    musicNote(f, musicNextT, dur, 0.055, 'triangle');        /* melodia */
+    const root = CHORD_ROOT[st] ?? 0;
+    const bass = (MUSIC_BASE / 2) * Math.pow(2, root / 12);  /* acompanhamento */
+    musicNote(bass, musicNextT, dur, 0.04, 'sine');
+    musicNote(bass * Math.pow(2, 7 / 12), musicNextT, dur, 0.022, 'sine');
+    musicNextT += dur;
+    musicIdx = (musicIdx + 1) % MELODY.length;
+    if (musicIdx === 0) musicNextT += 60 / MUSIC_BPM;        /* respiro entre repetições */
+  }
+}
+
+/* ===== voz (Web Speech API): fala o que foi atingido, em inglês ou português ===== */
+let voiceEN = null, voicePT = null;
+function pickVoice(){
+  if (!('speechSynthesis' in window)) return;
+  const vs = speechSynthesis.getVoices();
+  if (!vs.length) return;
+  /* preferência por vozes femininas conhecidas de cada plataforma */
+  const femaleEN = /female|woman|girl|zira|aria|jenny|michelle|ana\b|samantha|susan|salli|joanna|kendra|kimberly|ivy|allison|ava|nicky|karen|moira|tessa|serena|catherine|hazel|libby|sonia/i;
+  const femalePT = /female|feminina|maria|francisca|thalita|heloisa|leticia|letícia|camila|vitoria|vitória|luciana|fernanda|yara/i;
+  const en = vs.filter(v => /^en([-_]|$)/i.test(v.lang));
+  voiceEN = en.find(v => femaleEN.test(v.name))
+         || en.find(v => /google us english/i.test(v.name))   /* feminina no Chrome */
+         || en.find(v => v.default) || en[0] || null;
+  const ptbr = vs.filter(v => /^pt[-_]BR/i.test(v.lang));
+  const pt = ptbr.length ? ptbr : vs.filter(v => /^pt([-_]|$)/i.test(v.lang));
+  voicePT = pt.find(v => femalePT.test(v.name))
+         || pt.find(v => /google português do brasil/i.test(v.name))   /* feminina no Chrome */
+         || pt.find(v => v.default) || pt[0] || null;
+}
+if ('speechSynthesis' in window){
+  pickVoice();
+  speechSynthesis.onvoiceschanged = pickVoice;
+}
+function speak(text){
+  if (!('speechSynthesis' in window)) return;
+  try {
+    speechSynthesis.cancel();          /* acertos em sequência: fala sempre o mais recente */
+    const u = new SpeechSynthesisUtterance(text);
+    const isPT = prefs.lang === 'pt';
+    u.lang = isPT ? 'pt-BR' : 'en-US';
+    const v = isPT ? voicePT : voiceEN;
+    if (v) u.voice = v;
+    u.pitch = v ? 1.05 : 1.3;          /* sem voz feminina disponível: agudiza a padrão */
+    u.rate = 0.95;
+    speechSynthesis.speak(u);
+  } catch(e){}
+}
 const sndPin  = () => { blip(620, .08, .09); setTimeout(()=>blip(940,.1,.08),60); };
 const sndDay  = () => { blip(660,.12,.06); setTimeout(()=>blip(880,.12,.06),130); setTimeout(()=>blip(1100,.18,.06),260); };
 const sndTick = () => blip(1200, .05, .04);
@@ -289,6 +462,8 @@ function skyAt(t){
   return { sky:_ca.setHex(SKY[0][1]).clone(), fog:_cb.setHex(SKY[0][2]).clone(), sun:1, amb:1 };
 }
 const isNight = () => dayTime > 0.56 && dayTime < 0.95;
+/* tema arco-íris: céu de espaço fixo, sem passagem de dia para noite */
+const SPACE_SKY = new THREE.Color(0x06060f);
 /* 0 → 1 no crepúsculo, 1 → 0 no amanhecer (para o brilho da bola) */
 function nightGlow(){
   if (dayTime < 0.50 || dayTime > 0.97) return 0;
@@ -324,6 +499,30 @@ function makeGlassTexture(){
     for (let col = -1; col * w < size + r; col++){
       const x = col * w + (row % 2 ? w/2 : 0), y = row * h;
       cx.fillStyle = cols[(Math.random()*cols.length)|0];
+      cx.beginPath();
+      for (let i = 0; i < 6; i++){
+        const a = Math.PI/6 + i*Math.PI/3;
+        cx[i ? 'lineTo' : 'moveTo'](x + Math.cos(a)*(r-1.5), y + Math.sin(a)*(r-1.5));
+      }
+      cx.closePath(); cx.fill();
+      cx.strokeStyle = 'rgba(255,255,255,.25)'; cx.stroke();
+    }
+  }
+  return new THREE.CanvasTexture(cv);
+}
+function makeRainbowTexture(hex){
+  /* vidro em tons de uma única cor (cada trecho da pista arco-íris tem a sua) */
+  const size = 256, r = 22;
+  const cv = document.createElement('canvas'); cv.width = cv.height = size;
+  const cx = cv.getContext('2d');
+  cx.fillStyle = '#0a0a16'; cx.fillRect(0, 0, size, size);
+  const base = new THREE.Color(hex);
+  const w = Math.sqrt(3) * r, h = 1.5 * r;
+  for (let row = -1; row * h < size + r; row++){
+    for (let col = -1; col * w < size + r; col++){
+      const x = col * w + (row % 2 ? w/2 : 0), y = row * h;
+      const v = 0.5 + Math.random() * 0.65;
+      cx.fillStyle = `rgb(${Math.min(255, base.r*v*255)|0},${Math.min(255, base.g*v*255)|0},${Math.min(255, base.b*v*255)|0})`;
       cx.beginPath();
       for (let i = 0; i < 6; i++){
         const a = Math.PI/6 + i*Math.PI/3;
@@ -406,6 +605,126 @@ function makeWindowTexture(){
   }
   return new THREE.CanvasTexture(cv);
 }
+function makeFruitTexture(hex, kind){
+  /* casca de cada fruta desenhada em canvas: listras, poros, sementes, brilho */
+  const size = 128;
+  const cv = document.createElement('canvas'); cv.width = cv.height = size;
+  const cx = cv.getContext('2d');
+  const c = new THREE.Color(hex);
+  cx.fillStyle = `rgb(${c.r*255|0},${c.g*255|0},${c.b*255|0})`;
+  cx.fillRect(0, 0, size, size);
+  if (kind === 'apple'){
+    for (let i = 0; i < 26; i++){
+      cx.strokeStyle = `rgba(255,220,170,${0.05 + Math.random()*0.10})`;
+      cx.lineWidth = 1 + Math.random()*2;
+      const x = Math.random()*size;
+      cx.beginPath(); cx.moveTo(x, 0);
+      cx.quadraticCurveTo(x + (Math.random()*10 - 5), size/2, x, size);
+      cx.stroke();
+    }
+  } else if (kind === 'orange'){
+    for (let i = 0; i < 900; i++){
+      cx.fillStyle = `rgba(140,60,0,${0.05 + Math.random()*0.10})`;
+      cx.beginPath();
+      cx.arc(Math.random()*size, Math.random()*size, 0.8 + Math.random()*1.1, 0, Math.PI*2);
+      cx.fill();
+    }
+  } else if (kind === 'watermelon'){
+    cx.fillStyle = '#1d5c24';
+    const n = 8, w = size / n;
+    for (let s = 0; s < n; s += 2){
+      cx.beginPath(); cx.moveTo(s*w, 0);
+      for (let y = 0; y <= size; y += 8) cx.lineTo(s*w + Math.sin(y*0.24 + s)*3.5, y);
+      for (let y = size; y >= 0; y -= 8) cx.lineTo(s*w + w*0.85 + Math.sin(y*0.31 + s)*3.5, y);
+      cx.closePath(); cx.fill();
+    }
+  } else if (kind === 'strawberry'){
+    for (let y = 6; y < size; y += 14){
+      for (let x = ((y/14)|0) % 2 ? 14 : 6; x < size; x += 16){
+        cx.fillStyle = '#f7e9a0';
+        cx.beginPath(); cx.ellipse(x, y, 1.7, 2.6, 0, 0, Math.PI*2); cx.fill();
+        cx.strokeStyle = 'rgba(120,20,20,.5)'; cx.stroke();
+      }
+    }
+  } else if (kind === 'banana'){
+    for (let i = 0; i < 70; i++){
+      cx.fillStyle = `rgba(120,80,20,${0.04 + Math.random()*0.08})`;
+      cx.fillRect(Math.random()*size, Math.random()*size, 2 + Math.random()*3, 1 + Math.random()*2);
+    }
+    cx.fillStyle = 'rgba(255,255,255,.10)';
+    cx.fillRect(0, 8, size, 14);
+  } else if (kind === 'grape' || kind === 'tomato' || kind === 'eggplant'){
+    /* casca lisa e brilhante: realce radial */
+    const g = cx.createRadialGradient(size*0.35, size*0.35, 6, size/2, size/2, size*0.7);
+    g.addColorStop(0, 'rgba(255,255,255,.35)');
+    g.addColorStop(0.35, 'rgba(255,255,255,.06)');
+    g.addColorStop(1, 'rgba(0,0,0,.25)');
+    cx.fillStyle = g; cx.fillRect(0, 0, size, size);
+  } else if (kind === 'carrot'){
+    for (let y = 4; y < size; y += 9 + Math.random()*8){
+      cx.strokeStyle = `rgba(140,50,0,${0.15 + Math.random()*0.15})`;
+      cx.lineWidth = 1 + Math.random()*1.5;
+      cx.beginPath(); cx.moveTo(0, y);
+      cx.lineTo(size, y + (Math.random()*4 - 2));
+      cx.stroke();
+    }
+  } else if (kind === 'corn'){
+    /* grade de grãos de milho */
+    for (let y = 0; y < size; y += 16){
+      for (let x = 0; x < size; x += 13){
+        cx.fillStyle = `rgb(${225 + Math.random()*30|0},${180 + Math.random()*40|0},40)`;
+        cx.beginPath();
+        cx.ellipse(x + 6.5, y + 8, 5, 6.5, 0, 0, Math.PI*2);
+        cx.fill();
+        cx.strokeStyle = 'rgba(140,90,10,.5)'; cx.stroke();
+      }
+    }
+  } else if (kind === 'broccoli'){
+    /* floretes: bolinhas verdes claras e escuras */
+    for (let i = 0; i < 380; i++){
+      const l = Math.random();
+      cx.fillStyle = `rgba(${30 + l*60|0},${90 + l*80|0},${30 + l*40|0},.6)`;
+      cx.beginPath();
+      cx.arc(Math.random()*size, Math.random()*size, 2 + Math.random()*4, 0, Math.PI*2);
+      cx.fill();
+    }
+  } else if (kind === 'pumpkin'){
+    /* gomos verticais da abóbora */
+    for (let s = 0; s < 8; s++){
+      const x = s * size/8;
+      cx.strokeStyle = 'rgba(120,50,0,.35)';
+      cx.lineWidth = 4;
+      cx.beginPath(); cx.moveTo(x, 0); cx.lineTo(x, size); cx.stroke();
+      cx.strokeStyle = 'rgba(255,200,120,.20)';
+      cx.lineWidth = 6;
+      cx.beginPath(); cx.moveTo(x + size/16, 0); cx.lineTo(x + size/16, size); cx.stroke();
+    }
+  }
+  return new THREE.CanvasTexture(cv);
+}
+/* blocos de brinquedo com letra/número: um material por caractere (cache) */
+const BLOCK_BG = [0xe8524a, 0x3a7be8, 0x3aa848, 0xe8a83a, 0x9a4ae8, 0x2ac8c8];
+const blockMatCache = {};
+function blockMaterial(ch){
+  if (blockMatCache[ch]) return blockMatCache[ch];
+  const size = 128;
+  const cv = document.createElement('canvas'); cv.width = cv.height = size;
+  const cx = cv.getContext('2d');
+  const bg = new THREE.Color(BLOCK_BG[Math.max(0, BLOCK_SEQ.indexOf(ch)) % BLOCK_BG.length]);
+  cx.fillStyle = `rgb(${bg.r*255|0},${bg.g*255|0},${bg.b*255|0})`;
+  cx.fillRect(0, 0, size, size);
+  cx.strokeStyle = 'rgba(255,255,255,.85)'; cx.lineWidth = 7;
+  cx.strokeRect(9, 9, size - 18, size - 18);
+  cx.fillStyle = '#fff';
+  const fpx = ch.length === 1 ? 76 : ch.length === 2 ? 56 : 44;   /* "100" também cabe */
+  cx.font = `bold ${fpx}px "Arial Black", Arial, sans-serif`;
+  cx.textAlign = 'center'; cx.textBaseline = 'middle';
+  cx.shadowColor = 'rgba(0,0,0,.4)'; cx.shadowOffsetX = 3; cx.shadowOffsetY = 3;
+  cx.fillText(ch, size/2, size/2 + 4);
+  const mat = new THREE.MeshLambertMaterial({ map: new THREE.CanvasTexture(cv) });
+  blockMatCache[ch] = mat;
+  return mat;
+}
 
 /* ============================== MODELOS ============================== */
 function addHoles(grp, r){
@@ -426,6 +745,7 @@ function addHoles(grp, r){
 }
 
 let sandBallMats = [], burstMats = [], pinMat, pinStripeMat;
+let foodMats = null, foodBurstMats = [];
 function buildMaterials(){
   for (const hex of SAND_PALETTE){
     sandBallMats.push(new THREE.MeshLambertMaterial({ map: makeSandTexture(hex, 128, 2600) }));
@@ -433,6 +753,27 @@ function buildMaterials(){
   }
   pinMat = new THREE.MeshPhongMaterial({ color: 0xf2ead8, shininess: 45, specular: 0x444444 });
   pinStripeMat = new THREE.MeshLambertMaterial({ color: 0xdd2233 });
+
+  /* frutas e legumes: casca texturizada + materiais de apoio compartilhados */
+  foodMats = {
+    apple:      new THREE.MeshPhongMaterial({ map: makeFruitTexture(0xd42230, 'apple'), shininess: 55, specular: 0x442222 }),
+    banana:     new THREE.MeshLambertMaterial({ map: makeFruitTexture(0xf2cc3a, 'banana') }),
+    orange:     new THREE.MeshLambertMaterial({ map: makeFruitTexture(0xf28322, 'orange') }),
+    watermelon: new THREE.MeshPhongMaterial({ map: makeFruitTexture(0x3a9a48, 'watermelon'), shininess: 35, specular: 0x223322 }),
+    strawberry: new THREE.MeshPhongMaterial({ map: makeFruitTexture(0xe02840, 'strawberry'), shininess: 45, specular: 0x442222 }),
+    grape:      new THREE.MeshPhongMaterial({ map: makeFruitTexture(0x8a3ae8, 'grape'), shininess: 70, specular: 0x443355 }),
+    carrot:     new THREE.MeshLambertMaterial({ map: makeFruitTexture(0xf07818, 'carrot') }),
+    tomato:     new THREE.MeshPhongMaterial({ map: makeFruitTexture(0xe02830, 'tomato'), shininess: 70, specular: 0x553333 }),
+    corn:       new THREE.MeshLambertMaterial({ map: makeFruitTexture(0xf2d24a, 'corn') }),
+    eggplant:   new THREE.MeshPhongMaterial({ map: makeFruitTexture(0x5a2a8a, 'eggplant'), shininess: 80, specular: 0x554466 }),
+    broccoli:   new THREE.MeshLambertMaterial({ map: makeFruitTexture(0x2a7a2a, 'broccoli') }),
+    pumpkin:    new THREE.MeshPhongMaterial({ map: makeFruitTexture(0xe8821e, 'pumpkin'), shininess: 30, specular: 0x442211 }),
+    stem:  new THREE.MeshLambertMaterial({ color: 0x6a4a22 }),
+    leaf:  new THREE.MeshLambertMaterial({ color: 0x2a8a3a }),
+    stalk: new THREE.MeshLambertMaterial({ color: 0x9ac86a }),
+    tip:   new THREE.MeshLambertMaterial({ color: 0x5a3a1a }),
+  };
+  foodBurstMats = FOODS.map(f => new THREE.MeshLambertMaterial({ color: f.burst }));
 }
 
 function makePin(){
@@ -448,18 +789,154 @@ function makePin(){
   return g;
 }
 
+function makeBlock(){
+  /* bloco de brinquedo com letra ou número nas faces */
+  const g = new THREE.Group();
+  const m = new THREE.Mesh(new THREE.BoxGeometry(BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE), blockMaterial('A'));
+  m.position.y = BLOCK_HALF;
+  g.add(m);
+  g.userData.blockMesh = m;
+  return g;
+}
+
+function makeFood(idx){
+  /* frutas e legumes com a base em y = 0 (apoiados na pista) */
+  const g = new THREE.Group();
+  const name = FOODS[idx].en;
+  const F = foodMats;
+  if (name === 'apple'){
+    const body = new THREE.Mesh(new THREE.SphereGeometry(1.8, 20, 16), F.apple);
+    body.scale.y = 0.92; body.position.y = 1.68; g.add(body);
+    const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.13, 0.9, 6), F.stem);
+    stem.position.y = 3.5; stem.rotation.z = 0.18; g.add(stem);
+    const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.42, 8, 6), F.leaf);
+    leaf.scale.set(1.6, 0.35, 0.8); leaf.position.set(0.55, 3.55, 0); leaf.rotation.z = -0.4; g.add(leaf);
+  } else if (name === 'banana'){
+    const body = new THREE.Mesh(new THREE.TorusGeometry(1.7, 0.62, 10, 18, Math.PI * 0.95), F.banana);
+    body.rotation.z = Math.PI; body.position.y = 2.4; g.add(body);
+    for (const [tx, ty] of [[-1.7, 2.4], [1.68, 2.13]]){
+      const tip = new THREE.Mesh(new THREE.SphereGeometry(0.34, 8, 6), F.tip);
+      tip.position.set(tx, ty, 0); g.add(tip);
+    }
+  } else if (name === 'orange'){
+    const body = new THREE.Mesh(new THREE.SphereGeometry(1.8, 20, 16), F.orange);
+    body.position.y = 1.8; g.add(body);
+    const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 0.4, 6), F.stem);
+    stem.position.y = 3.7; g.add(stem);
+    const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.4, 8, 6), F.leaf);
+    leaf.scale.set(1.5, 0.32, 0.75); leaf.position.set(0.5, 3.72, 0); leaf.rotation.z = -0.35; g.add(leaf);
+  } else if (name === 'watermelon'){
+    const body = new THREE.Mesh(new THREE.SphereGeometry(2.05, 22, 16), F.watermelon);
+    body.scale.x = 1.25; body.position.y = 2.05; g.add(body);
+  } else if (name === 'strawberry'){
+    const body = new THREE.Mesh(new THREE.SphereGeometry(1.65, 18, 14), F.strawberry);
+    body.scale.y = 1.25; body.position.y = 2.0; g.add(body);
+    for (let k = 0; k < 6; k++){
+      const a = k * Math.PI / 3;
+      const sep = new THREE.Mesh(new THREE.ConeGeometry(0.32, 1.1, 5), F.leaf);
+      sep.position.set(Math.cos(a) * 0.75, 4.0, Math.sin(a) * 0.75);
+      sep.rotation.set(Math.sin(a) * 1.15, 0, -Math.cos(a) * 1.15);
+      g.add(sep);
+    }
+    const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.11, 0.7, 6), F.stalk);
+    stem.position.y = 4.25; g.add(stem);
+  } else if (name === 'grapes'){
+    const geo = new THREE.SphereGeometry(0.66, 12, 10);
+    const put = (x, y, z) => { const b = new THREE.Mesh(geo, F.grape); b.position.set(x, y, z); g.add(b); };
+    put(0, 0.66, 0);
+    for (let k = 0; k < 3; k++){
+      const a = k * Math.PI * 2 / 3;
+      put(Math.cos(a) * 0.68, 1.62, Math.sin(a) * 0.68);
+    }
+    for (let k = 0; k < 5; k++){
+      const a = k * Math.PI * 2 / 5 + 0.4;
+      put(Math.cos(a) * 1.05, 2.62, Math.sin(a) * 1.05);
+    }
+    put(0, 2.72, 0);
+    const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 1.1, 6), F.stem);
+    stem.position.y = 3.7; stem.rotation.z = 0.2; g.add(stem);
+  } else if (name === 'carrot'){
+    const body = new THREE.Mesh(new THREE.ConeGeometry(1.05, 3.8, 12), F.carrot);
+    body.rotation.x = Math.PI; body.position.y = 1.9; g.add(body);
+    for (let k = 0; k < 4; k++){
+      const a = k * Math.PI / 2 + 0.3;
+      const top = new THREE.Mesh(new THREE.ConeGeometry(0.3, 1.6, 5), F.stalk);
+      top.position.set(Math.cos(a) * 0.35, 4.4, Math.sin(a) * 0.35);
+      top.rotation.set(Math.sin(a) * 0.35, 0, -Math.cos(a) * 0.35);
+      g.add(top);
+    }
+  } else if (name === 'tomato'){
+    const body = new THREE.Mesh(new THREE.SphereGeometry(1.85, 20, 16), F.tomato);
+    body.scale.y = 0.85; body.position.y = 1.58; g.add(body);
+    for (let k = 0; k < 5; k++){
+      const a = k * Math.PI * 2 / 5;
+      const sep = new THREE.Mesh(new THREE.ConeGeometry(0.26, 1.3, 5), F.leaf);
+      sep.position.set(Math.cos(a) * 0.7, 3.05, Math.sin(a) * 0.7);
+      sep.rotation.set(-Math.sin(a) * 1.35, 0, Math.cos(a) * 1.35);
+      g.add(sep);
+    }
+    const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.11, 0.6, 6), F.leaf);
+    stem.position.y = 3.3; g.add(stem);
+  } else if (name === 'corn'){
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.95, 0.8, 3.6, 14), F.corn);
+    body.position.y = 2.0; g.add(body);
+    const top = new THREE.Mesh(new THREE.SphereGeometry(0.94, 14, 10), F.corn);
+    top.scale.y = 0.7; top.position.y = 3.8; g.add(top);
+    for (let k = 0; k < 3; k++){
+      const a = k * Math.PI * 2 / 3;
+      const husk = new THREE.Mesh(new THREE.ConeGeometry(0.55, 3.0, 6), F.leaf);
+      husk.position.set(Math.cos(a) * 0.95, 1.5, Math.sin(a) * 0.95);
+      husk.rotation.set(Math.sin(a) * 0.3, 0, -Math.cos(a) * 0.3);
+      g.add(husk);
+    }
+  } else if (name === 'eggplant'){
+    const body = new THREE.Mesh(new THREE.SphereGeometry(1.5, 18, 14), F.eggplant);
+    body.scale.y = 1.45; body.position.y = 2.15; g.add(body);
+    const cap = new THREE.Mesh(new THREE.ConeGeometry(0.95, 1.0, 8), F.leaf);
+    cap.position.y = 4.15; g.add(cap);
+    const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.15, 0.8, 6), F.leaf);
+    stem.position.y = 4.8; stem.rotation.z = 0.25; g.add(stem);
+  } else if (name === 'broccoli'){
+    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.75, 1.9, 10), F.stalk);
+    trunk.position.y = 0.95; g.add(trunk);
+    const puffGeo = new THREE.SphereGeometry(1.0, 12, 10);
+    const puffs = [[0, 2.9, 0, 1.35], [-1.0, 2.5, 0.3, 1], [0.9, 2.5, -0.4, 1], [0.2, 2.4, 0.95, 0.9], [-0.4, 2.5, -0.9, 0.9]];
+    for (const [x, y, z, s] of puffs){
+      const p = new THREE.Mesh(puffGeo, F.broccoli);
+      p.position.set(x, y, z); p.scale.setScalar(s); g.add(p);
+    }
+  } else { /* pumpkin */
+    const body = new THREE.Mesh(new THREE.SphereGeometry(2.0, 22, 16), F.pumpkin);
+    body.scale.set(1.15, 0.8, 1.15); body.position.y = 1.6; g.add(body);
+    const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.26, 1.0, 7), F.stem);
+    stem.position.y = 3.5; stem.rotation.z = 0.3; g.add(stem);
+  }
+  return g;
+}
+
 function makeTarget(){
-  /* cada slot tem uma bola de areia E um pino; a visibilidade define o tipo */
+  /* cada slot tem bola de areia, pino, bloco e frutas/legumes; a visibilidade define o tipo */
   const g = new THREE.Group();
   const ballGrp = new THREE.Group();
   const ball = new THREE.Mesh(new THREE.SphereGeometry(TARGET_R, 20, 16), sandBallMats[0]);
   ballGrp.add(ball);
   addHoles(ballGrp, TARGET_R);
   const pinGrp = makePin();
-  g.add(ballGrp, pinGrp);
+  const blockGrp = makeBlock();
+  const foodGrp = new THREE.Group();
+  const foodVariants = [];
+  for (let i = 0; i < FOODS.length; i++){
+    const f = makeFood(i);
+    f.visible = false;
+    foodGrp.add(f);
+    foodVariants.push(f);
+  }
+  pinGrp.visible = blockGrp.visible = foodGrp.visible = false;   /* estado inicial: bola */
+  g.add(ballGrp, pinGrp, blockGrp, foodGrp);
   g.userData = {
-    ballGrp, pinGrp, ballMesh: ball,
-    kind: 'ball', colorIdx: 0, lane: 0, z: -500,
+    ballGrp, pinGrp, blockGrp, foodGrp, foodVariants,
+    ballMesh: ball, blockMesh: blockGrp.userData.blockMesh,
+    kind: 'ball', colorIdx: 0, char: 'A', foodIdx: 0, lane: 0, z: -500,
     flying: false, vy: 0, vz: 0, vr: 0, fy: 0, life: 0, active: true,
   };
   return g;
@@ -529,6 +1006,51 @@ function buildWorld(){
     v.add(glow);
     scene.add(v); volcanoes.push(v);
   }
+  /* cenário distante — tema neve: montanhas nevadas */
+  const snowFarMat = new THREE.MeshLambertMaterial({ color: 0xeef2f8 });
+  for (let i = 0; i < 9; i++){
+    const h = 110 + Math.random()*170;
+    const m = new THREE.Mesh(new THREE.ConeGeometry(130 + Math.random()*130, h, 5), snowFarMat);
+    m.position.set(-900 + i*230 + (Math.random()*80-40), h/2 - 36, -1500 - Math.random()*300);
+    m.rotation.y = Math.random();
+    scene.add(m); snowPeaks.push(m);
+  }
+  /* cenário distante — tema campo: colinas verdes suaves */
+  const hillMat = new THREE.MeshLambertMaterial({ color: 0x3a8a3a });
+  for (let i = 0; i < 9; i++){
+    const hr = 220 + Math.random()*180;
+    const m = new THREE.Mesh(new THREE.SphereGeometry(hr, 12, 8), hillMat);
+    m.scale.y = 0.35;
+    m.position.set(-900 + i*240 + (Math.random()*80-40), -36, -1500 - Math.random()*300);
+    scene.add(m); hills.push(m);
+  }
+  /* cenário distante — tema arco-íris: estrelas e planetas no espaço */
+  {
+    const starGeo = new THREE.BufferGeometry();
+    const starPos = [];
+    for (let i = 0; i < 400; i++){
+      starPos.push((Math.random()*2 - 1)*2200, Math.random()*900 - 30, -800 - Math.random()*1400);
+    }
+    starGeo.setAttribute('position', new THREE.Float32BufferAttribute(starPos, 3));
+    stars = new THREE.Points(starGeo,
+      new THREE.PointsMaterial({ color: 0xffffff, size: 2.5, sizeAttenuation: false }));
+    scene.add(stars);
+    const planetCols = [0xff8844, 0x44aaff, 0xcc66ff, 0x66ffcc];
+    for (let i = 0; i < 4; i++){
+      const pr = 40 + Math.random()*50;
+      const p = new THREE.Mesh(new THREE.SphereGeometry(pr, 16, 12),
+        new THREE.MeshBasicMaterial({ color: planetCols[i] }));
+      p.position.set(-700 + i*450 + Math.random()*120, 150 + Math.random()*250, -1400 - Math.random()*300);
+      scene.add(p); planets.push(p);
+    }
+    /* anel no primeiro planeta */
+    const pr0 = planets[0].geometry.parameters.radius;
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(pr0*1.7, pr0*0.12, 8, 28),
+      new THREE.MeshBasicMaterial({ color: 0xe8c88a }));
+    ring.rotation.x = 1.25;
+    planets[0].add(ring);
+  }
+
   /* chão distante de cada tema */
   glassGround = new THREE.Mesh(new THREE.PlaneGeometry(6000, 6000),
     new THREE.MeshLambertMaterial({ color: 0x10092a }));
@@ -542,6 +1064,18 @@ function buildWorld(){
     new THREE.MeshLambertMaterial({ color: 0x1a0a06, emissive: 0x2a0800 }));
   lavaGround.rotation.x = -Math.PI/2; lavaGround.position.set(0, -36, -800);
   scene.add(lavaGround);
+  snowGround = new THREE.Mesh(new THREE.PlaneGeometry(6000, 6000),
+    new THREE.MeshLambertMaterial({ color: 0xdde6f2 }));
+  snowGround.rotation.x = -Math.PI/2; snowGround.position.set(0, -36, -800);
+  scene.add(snowGround);
+  fieldGround = new THREE.Mesh(new THREE.PlaneGeometry(6000, 6000),
+    new THREE.MeshLambertMaterial({ color: 0x4a9a42 }));
+  fieldGround.rotation.x = -Math.PI/2; fieldGround.position.set(0, -36, -800);
+  scene.add(fieldGround);
+  rainbowGround = new THREE.Mesh(new THREE.PlaneGeometry(6000, 6000),
+    new THREE.MeshLambertMaterial({ color: 0x04040a }));
+  rainbowGround.rotation.x = -Math.PI/2; rainbowGround.position.set(0, -36, -800);
+  scene.add(rainbowGround);
 
   sunMesh = new THREE.Mesh(new THREE.SphereGeometry(38, 16, 16),
     new THREE.MeshBasicMaterial({ color: 0xffd75e }));
@@ -588,6 +1122,30 @@ function buildWorld(){
   const lavaSideTex = makeSandTexture(0x6b4a42, 256, 6000);
   lavaSideTex.repeat.set(4, 1);
   const lavaSideMat = new THREE.MeshLambertMaterial({ map: lavaSideTex });
+  /* neve fofa: piso, bancos de neve e acostamento branco-azulado */
+  const snowFloorMat = new THREE.MeshLambertMaterial({ map: makeSandTexture(0xf0f4fa, 256, 7000) });
+  const snowBermMat  = new THREE.MeshLambertMaterial({ map: makeSandTexture(0xe2e8f4, 128, 2600) });
+  const snowSideTex = makeSandTexture(0xe8eef8, 256, 6000);
+  snowSideTex.repeat.set(4, 1);
+  const snowSideMat = new THREE.MeshLambertMaterial({ map: snowSideTex });
+  /* campo: trilha de terra com acostamento de grama */
+  const fieldFloorMat = new THREE.MeshLambertMaterial({ map: makeSandTexture(0x9a7448, 256, 9000) });
+  const grassBermMat  = new THREE.MeshLambertMaterial({ map: makeSandTexture(0x4a9a3a, 128, 2600) });
+  const grassSideTex = makeSandTexture(0x4f9e3c, 256, 8000);
+  grassSideTex.repeat.set(4, 1);
+  const grassSideMat = new THREE.MeshLambertMaterial({ map: grassSideTex });
+  /* arco-íris: cada trecho de uma cor (vidro) e acostamento preto (espaço) */
+  const RAINBOW_COLS = [0xff2a2a, 0xff8822, 0xffe22a, 0x2acc44, 0x2aaaff, 0x5533ff, 0xaa2aff];
+  const rainbowFloorMats = RAINBOW_COLS.map(c => {
+    const m = new THREE.MeshLambertMaterial({ map: makeRainbowTexture(c) });
+    m.emissive = new THREE.Color(0xffffff);
+    m.emissiveMap = m.map;
+    m.emissiveIntensity = 0.5;
+    return m;
+  });
+  const rainbowEdgeMats = RAINBOW_COLS.map(c =>
+    new THREE.MeshLambertMaterial({ color: 0x111116, emissive: c }));
+  const blackSideMat = new THREE.MeshLambertMaterial({ color: 0x030308 });
   function addSides(grp, mat){
     for (const s of [-1, 1]){
       const m = new THREE.Mesh(sideGeo, mat);
@@ -646,7 +1204,37 @@ function buildWorld(){
     addSides(lava, lavaSideMat);
     g.add(lava);
 
-    g.userData = { sand, glass, cyber, lava };
+    const snow = new THREE.Group();
+    const np = new THREE.Mesh(new THREE.PlaneGeometry(ROAD_W + 1.6, SEG_LEN + 0.4), snowFloorMat);
+    np.rotation.x = -Math.PI/2; snow.add(np);
+    for (const x of [-ROAD_HALF - 0.2, ROAD_HALF + 0.2]){
+      const bank = new THREE.Mesh(new THREE.BoxGeometry(1.8, 1.2, SEG_LEN + 0.4), snowBermMat);
+      bank.position.set(x + Math.sign(x)*0.9, 0.45, 0); snow.add(bank);
+    }
+    addSides(snow, snowSideMat);
+    g.add(snow);
+
+    const field = new THREE.Group();
+    const fp = new THREE.Mesh(new THREE.PlaneGeometry(ROAD_W + 1.6, SEG_LEN + 0.4), fieldFloorMat);
+    fp.rotation.x = -Math.PI/2; field.add(fp);
+    for (const x of [-ROAD_HALF - 0.2, ROAD_HALF + 0.2]){
+      const grass = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.8, SEG_LEN + 0.4), grassBermMat);
+      grass.position.set(x + Math.sign(x)*0.9, 0.3, 0); field.add(grass);
+    }
+    addSides(field, grassSideMat);
+    g.add(field);
+
+    const rainbow = new THREE.Group();
+    const rp = new THREE.Mesh(new THREE.PlaneGeometry(ROAD_W + 1.6, SEG_LEN + 0.4), rainbowFloorMats[i % RAINBOW_COLS.length]);
+    rp.rotation.x = -Math.PI/2; rainbow.add(rp);
+    for (const x of [-ROAD_HALF - 0.6, ROAD_HALF + 0.6]){
+      const e = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.3, SEG_LEN + 0.4), rainbowEdgeMats[i % RAINBOW_COLS.length]);
+      e.position.set(x, 0.12, 0); rainbow.add(e);
+    }
+    addSides(rainbow, blackSideMat);
+    g.add(rainbow);
+
+    g.userData = { sand, glass, cyber, lava, snow, field, rainbow };
     g.position.z = -i * SEG_LEN;
     scene.add(g);
     segments.push(g);
@@ -661,6 +1249,13 @@ function buildWorld(){
   const poleMat = new THREE.MeshLambertMaterial({ color: 0x101018 });
   const obsidianMat = new THREE.MeshLambertMaterial({ color: 0x14090c });
   const neonCols = [0x00e5ff, 0xff2bd6, 0x7b2bff, 0x2bff88, 0xffe14a];
+  const snowPropMat = new THREE.MeshLambertMaterial({ color: 0xf2f6fc });
+  const carrotNoseMat = new THREE.MeshLambertMaterial({ color: 0xe87422 });
+  const pineMat  = new THREE.MeshLambertMaterial({ color: 0x1e5c2e });
+  const trunkMat = new THREE.MeshLambertMaterial({ color: 0x6a4a2a });
+  const leafBallMat = new THREE.MeshLambertMaterial({ color: 0x2e8a34 });
+  const hayMat = new THREE.MeshLambertMaterial({ map: makeSandTexture(0xd8b84a, 128, 3000) });
+  const asteroidMat = new THREE.MeshLambertMaterial({ color: 0x555560 });
 
   for (let i = 0; i < 26; i++){
     const g = new THREE.Group();
@@ -727,10 +1322,69 @@ function buildWorld(){
     }
     g.add(lavaProp);
 
+    /* tema neve: boneco de neve e pinheiro nevado */
+    const snowProp = new THREE.Group();
+    if (i % 2 === 0){
+      for (const [r, y] of [[1.4, 1.3], [1.0, 3.0], [0.7, 4.3]]){
+        const b = new THREE.Mesh(new THREE.SphereGeometry(r, 14, 12), snowPropMat);
+        b.position.y = y; snowProp.add(b);
+      }
+      const nose = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.8, 6), carrotNoseMat);
+      nose.rotation.x = Math.PI/2; nose.position.set(0, 4.35, 0.9); snowProp.add(nose);
+    } else {
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.5, 1.6, 8), trunkMat);
+      trunk.position.y = 0.8; snowProp.add(trunk);
+      for (const [r, hh, y] of [[2.2, 2.4, 2.4], [1.7, 2.2, 3.9], [1.2, 2.0, 5.3]]){
+        const c = new THREE.Mesh(new THREE.ConeGeometry(r, hh, 8), pineMat);
+        c.position.y = y; snowProp.add(c);
+      }
+      const cap = new THREE.Mesh(new THREE.ConeGeometry(0.55, 1.0, 8), snowPropMat);
+      cap.position.y = 6.4; snowProp.add(cap);
+    }
+    g.add(snowProp);
+
+    /* tema campo: árvore frondosa e fardo de feno */
+    const fieldProp = new THREE.Group();
+    if (i % 2 === 0){
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.65, 3.2, 8), trunkMat);
+      trunk.position.y = 1.6; fieldProp.add(trunk);
+      for (const [r, x, y, z] of [[2.0, 0, 4.6, 0], [1.5, 1.2, 4.0, 0.4], [1.4, -1.1, 4.1, -0.3]]){
+        const f = new THREE.Mesh(new THREE.SphereGeometry(r, 12, 10), leafBallMat);
+        f.position.set(x, y, z); fieldProp.add(f);
+      }
+    } else {
+      const bale = new THREE.Mesh(new THREE.CylinderGeometry(1.3, 1.3, 2.6, 14), hayMat);
+      bale.rotation.z = Math.PI/2; bale.position.y = 1.3; fieldProp.add(bale);
+    }
+    g.add(fieldProp);
+
+    /* tema arco-íris: cristal flutuante e asteroide */
+    const rainbowProp = new THREE.Group();
+    if (i % 2 === 0){
+      const crys = new THREE.Mesh(new THREE.OctahedronGeometry(1.6),
+        new THREE.MeshLambertMaterial({ color: 0x0a0a12, emissive: neonCols[i % neonCols.length] }));
+      crys.position.y = 3.0; crys.rotation.y = Math.random()*3; rainbowProp.add(crys);
+    } else {
+      const ast = new THREE.Mesh(new THREE.DodecahedronGeometry(1.6 + Math.random()*0.8), asteroidMat);
+      ast.position.y = 1.8; ast.rotation.set(Math.random()*3, Math.random()*3, 0); rainbowProp.add(ast);
+    }
+    g.add(rainbowProp);
+
     g.userData = {
       sand: sandProp, glass: glassProp, cyber: cyberProp, lava: lavaProp,
+      snow: snowProp, field: fieldProp, rainbow: rainbowProp,
       off: ROAD_HALF + 3.5 + Math.random()*8,
       side: (i % 4 < 2) ? -1 : 1,
+      /* raio e altura aproximados de cada versão, para a sombra projetada */
+      dims: {
+        sand:  i % 2 === 0 ? { r: 1.5, h: 4.3 } : { r: 1.9, h: 2.8 },
+        glass: { r: 1.0, h: ph + 2.0 },
+        cyber: i % 2 === 0 ? { r: 1.9, h: 8.0 } : { r: 1.3, h: 9.3 },
+        lava:  i % 2 === 0 ? { r: 2.0, h: 2.8 } : { r: 1.1, h: 5.9 },
+        snow:  i % 2 === 0 ? { r: 1.5, h: 5.0 } : { r: 2.2, h: 7.0 },
+        field: i % 2 === 0 ? { r: 2.2, h: 6.6 } : { r: 1.6, h: 2.6 },
+        rainbow: i % 2 === 0 ? { r: 1.7, h: 4.6 } : { r: 1.9, h: 3.4 },
+      },
     };
     g.position.z = -i * 72;
     scene.add(g);
@@ -788,6 +1442,15 @@ function buildWorld(){
     scene.add(s);
     targetShadows.push(s);
   }
+  /* sombras dos adereços laterais (fora da pista) */
+  for (let i = 0; i < props.length; i++){
+    const s = new THREE.Mesh(shadowGeo, targetShadowMat);
+    s.rotation.x = -Math.PI/2;
+    s.renderOrder = 1;
+    s.visible = false;
+    scene.add(s);
+    propShadows.push(s);
+  }
 
   camera.position.set(0, 4.6, 10);
 }
@@ -797,14 +1460,23 @@ function setTheme(t){
   theme = t;
   for (const s of segments) for (const k of THEME_KEYS) s.userData[k].visible = k === t;
   for (const p of props)    for (const k of THEME_KEYS) p.userData[k].visible = k === t;
-  ground.visible      = t === 'sand';
-  glassGround.visible = t === 'glass';
-  cyberGround.visible = t === 'cyber';
-  lavaGround.visible  = t === 'lava';
+  ground.visible        = t === 'sand';
+  glassGround.visible   = t === 'glass';
+  cyberGround.visible   = t === 'cyber';
+  lavaGround.visible    = t === 'lava';
+  snowGround.visible    = t === 'snow';
+  fieldGround.visible   = t === 'field';
+  rainbowGround.visible = t === 'rainbow';
   for (const d of dunes)     d.visible = t === 'sand';
   for (const m of mountains) m.visible = t === 'glass';
   for (const b of buildings) b.visible = t === 'cyber';
   for (const v of volcanoes) v.visible = t === 'lava';
+  for (const s of snowPeaks) s.visible = t === 'snow';
+  for (const h of hills)     h.visible = t === 'field';
+  for (const p of planets)   p.visible = t === 'rainbow';
+  stars.visible = t === 'rainbow';
+  /* no espaço não há sol nem lua visíveis */
+  sunMesh.visible = moonMesh.visible = t !== 'rainbow';
 }
 
 /* ============================== HELPERS ============================== */
@@ -831,15 +1503,41 @@ function spawnZ(self){
   return far - TARGET_GAP;
 }
 
+/* modo letras/números: sempre atrás do alvo mais distante, para o jogador
+   encontrar a sequência na ordem certa (A, B, C… 1, 2, 3…) */
+function spawnZOrdered(self){
+  let far = -320;
+  for (const o of targets){
+    if (o !== self && o.userData.active) far = Math.min(far, o.userData.z);
+  }
+  return Math.min(-320, far - TARGET_GAP);
+}
+
 function respawnTarget(v, far){
   const u = v.userData;
-  if (far !== false) u.z = spawnZ(v);
+  if (far !== false) u.z = gameMode === 'letras' ? spawnZOrdered(v) : spawnZ(v);
   u.lane = (Math.random() * 2 - 1) * (ROAD_HALF - TARGET_R - 0.5);
-  u.kind = Math.random() < 0.6 ? 'ball' : 'pin';
-  u.colorIdx = (Math.random() * SAND_PALETTE.length) | 0;
-  u.ballMesh.material = sandBallMats[u.colorIdx];
+  if (gameMode === 'letras'){
+    u.kind = 'block';
+    if (u.active){
+      u.char = BLOCK_SEQ[blockSeqIdx % BLOCK_SEQ.length];
+      blockSeqIdx++;
+      u.blockMesh.material = blockMaterial(u.char);
+    }
+  } else if (gameMode === 'frutas'){
+    u.kind = 'food';
+    u.foodIdx = (Math.random() * FOODS.length) | 0;
+    u.foodVariants.forEach((f, i) => { f.visible = i === u.foodIdx; });
+    u.foodGrp.rotation.y = Math.random() * Math.PI * 2;
+  } else {
+    u.kind = Math.random() < 0.6 ? 'ball' : 'pin';
+    u.colorIdx = (Math.random() * SAND_PALETTE.length) | 0;
+    u.ballMesh.material = sandBallMats[u.colorIdx];
+  }
   u.ballGrp.visible = u.kind === 'ball';
   u.pinGrp.visible = u.kind === 'pin';
+  u.blockGrp.visible = u.kind === 'block';
+  u.foodGrp.visible = u.kind === 'food';
   u.ballGrp.rotation.set(Math.random()*6, Math.random()*6, 0);
   u.flying = false; u.fy = 0; u.life = 0;
   v.rotation.set(0, 0, 0);
@@ -848,10 +1546,13 @@ function respawnTarget(v, far){
 
 function applyDifficulty(){
   const diff = difficulty(day);
+  maxSpeed = diff.speed;
   targets.forEach((v, i) => {
+    const was = v.userData.active;
     v.userData.active = i < diff.active;
     v.visible = v.userData.active;
-    if (v.userData.active && v.userData.z > -50) respawnTarget(v);
+    /* slot recém-ativado também respawna (no modo letras, entra na sequência) */
+    if (v.userData.active && (v.userData.z > -50 || !was)) respawnTarget(v);
   });
 }
 
@@ -900,7 +1601,14 @@ function resetGame(){
   dayTime = 0; day = 1; left = QUOTA(1);
   shake = 0; totalHits = 0; km = 0;
   jumpY = 0; jumpVy = 0; airborne = false;
-  targets.forEach((v, i) => { v.userData.z = -150 - i * 70; respawnTarget(v, false); });
+  blockSeqIdx = 0;
+  /* define os ativos antes do respawn: no modo letras, só eles consomem a sequência */
+  const act0 = difficulty(1).active;
+  targets.forEach((v, i) => {
+    v.userData.z = -150 - i * 70;
+    v.userData.active = i < act0;
+    respawnTarget(v, false);
+  });
   applyDifficulty();
   for (const p of particles){ p.userData.active = false; p.visible = false; }
   state = 'play';
@@ -921,13 +1629,39 @@ BALL_COLORS.forEach(c => {
   swDiv.appendChild(b);
 });
 function refreshTrackBtns(){
-  document.querySelectorAll('.trackbtn').forEach(el =>
+  document.querySelectorAll('.trackbtn[data-track]').forEach(el =>
     el.classList.toggle('sel', el.dataset.track === prefs.track));
 }
-document.querySelectorAll('.trackbtn').forEach(el => {
+document.querySelectorAll('.trackbtn[data-track]').forEach(el => {
   el.onclick = () => { prefs.track = el.dataset.track; store.set('boliche3d.track', prefs.track); refreshTrackBtns(); };
 });
 refreshTrackBtns();
+function refreshModeBtns(){
+  document.querySelectorAll('.modebtn').forEach(el =>
+    el.classList.toggle('sel', el.dataset.mode === prefs.mode));
+}
+document.querySelectorAll('.modebtn').forEach(el => {
+  el.onclick = () => { prefs.mode = el.dataset.mode; store.set('boliche3d.mode', prefs.mode); refreshModeBtns(); };
+});
+refreshModeBtns();
+function refreshLangBtns(){
+  document.querySelectorAll('.langbtn').forEach(el =>
+    el.classList.toggle('sel', el.dataset.lang === prefs.lang));
+}
+document.querySelectorAll('.langbtn').forEach(el => {
+  el.onclick = () => { prefs.lang = el.dataset.lang; store.set('boliche3d.lang', prefs.lang); refreshLangBtns(); };
+});
+refreshLangBtns();
+
+/* tela de configurações (separada do menu inicial) */
+document.getElementById('cfgBtn').onclick = () => {
+  document.getElementById('menu').classList.add('hidden');
+  document.getElementById('config').classList.remove('hidden');
+};
+document.getElementById('cfgBack').onclick = () => {
+  document.getElementById('config').classList.add('hidden');
+  document.getElementById('menu').classList.remove('hidden');
+};
 
 /* ============================== INPUT ============================== */
 addEventListener('keydown', e => {
@@ -958,6 +1692,8 @@ function togglePause(){
     document.getElementById('pause').classList.remove('hidden');
     if (engGain) engGain.gain.value = 0;
   } else if (state === 'pause'){
+    /* com a confirmação de saída aberta, P não retoma o jogo */
+    if (!document.getElementById('quit').classList.contains('hidden')) return;
     state = 'play';
     document.getElementById('pause').classList.add('hidden');
   }
@@ -967,6 +1703,24 @@ document.addEventListener('visibilitychange', () => {
 });
 document.getElementById('btnResume').addEventListener('click', togglePause);
 document.getElementById('pauseBtn').addEventListener('click', togglePause);
+
+/* sair da partida (na pausa), com confirmação */
+document.getElementById('btnQuit').onclick = () => {
+  document.getElementById('pause').classList.add('hidden');
+  document.getElementById('quit').classList.remove('hidden');
+};
+document.getElementById('quitNo').onclick = () => {
+  document.getElementById('quit').classList.add('hidden');
+  document.getElementById('pause').classList.remove('hidden');
+};
+document.getElementById('quitYes').onclick = () => {
+  document.getElementById('quit').classList.add('hidden');
+  state = 'menu';
+  if (engGain) engGain.gain.value = 0;
+  if ('speechSynthesis' in window){ try { speechSynthesis.cancel(); } catch(e){} }
+  document.getElementById('menuRecord').textContent = best.label();
+  document.getElementById('menu').classList.remove('hidden');
+};
 
 const touch = { l:false, r:false };
 function bindTouch(id, prop){
@@ -982,6 +1736,8 @@ bindTouch('btnL','l'); bindTouch('btnR','r');
 
 document.getElementById('startBtn').onclick = () => {
   initAudio(); if (AC && AC.state === 'suspended') AC.resume();
+  pickVoice();               /* algumas plataformas só listam as vozes após um gesto */
+  gameMode = prefs.mode;
   const c = BALL_COLORS.find(c => c.id === prefs.color) || BALL_COLORS[0];
   playerMat.color.setHex(c.hex);
   /* brilho noturno na cor da bola (clareado p/ funcionar até na bola preta) */
@@ -1014,7 +1770,7 @@ function update(dt){
   speed += 12 * dt;
   /* subida segura a bola; descida embala */
   speed -= slopeAt(0) * 12 * dt;
-  speed = Math.max(0, Math.min(MAX_SPEED, speed));
+  speed = Math.max(0, Math.min(maxSpeed, speed));
 
   curveTimer -= dt;
   if (curveTimer <= 0){
@@ -1043,12 +1799,26 @@ function update(dt){
     s.rotation.y = Math.atan(2 * curve * CURVE_K * Math.max(0, d));
     s.rotation.x = Math.atan(slopeAt(d));
   }
-  for (const p of props){
+  for (let pi = 0; pi < props.length; pi++){
+    const p = props[pi], psh = propShadows[pi];
     p.position.z += dz;
     if (p.position.z > 20) p.position.z -= 26 * 72;
     const d = -p.position.z;
     p.position.x = p.userData.side * p.userData.off + curveX(d);
     p.position.y = yAt(d);
+
+    /* sombra do adereço no acostamento, seguindo o sol/lua */
+    if (shadow.op > 0.01 && d < 900){
+      const dm = p.userData.dims[theme];
+      const th = dm.h * 0.5;
+      psh.visible = true;
+      psh.position.set(p.position.x + shadow.kx * th, p.position.y + 0.06, p.position.z + shadow.kz * th);
+      psh.rotation.x = -Math.PI/2 + Math.atan(slopeAt(d));
+      psh.rotation.z = shadow.rot;
+      psh.scale.set(dm.r * shadow.stretch, dm.r, 1);
+    } else {
+      psh.visible = false;
+    }
   }
 
   /* alvos */
@@ -1075,28 +1845,38 @@ function update(dt){
     v.position.set(u.lane + curveX(d), baseY + u.fy, u.z);
     if (!u.flying) v.rotation.y = Math.atan(2 * curve * CURVE_K * Math.max(0, d));
 
+    /* medidas por tipo de alvo: meia-altura (sombra), raio e profundidade (colisão) */
+    const halfH = u.kind === 'ball' ? TARGET_R : u.kind === 'block' ? BLOCK_HALF :
+                  u.kind === 'food' ? FRUIT_R : 1.65 * PIN_S;
+    const halfW = u.kind === 'ball' ? TARGET_R : u.kind === 'block' ? BLOCK_HALF :
+                  u.kind === 'food' ? FRUIT_R : 0.85 * PIN_S;
+    const depth = u.kind === 'ball' ? TARGET_R : u.kind === 'block' ? BLOCK_HALF :
+                  u.kind === 'food' ? FRUIT_R * 0.8 : 0.6 * PIN_S;
+
     /* sombra do alvo, projetada na pista conforme o sol/lua */
     if (shadow.op > 0.01 && u.fy > -1){
-      const th = (u.kind === 'ball' ? TARGET_R : 1.65 * PIN_S) + Math.max(0, u.fy);
+      const th = halfH + Math.max(0, u.fy);
       sh.visible = true;
       sh.position.set(v.position.x + shadow.kx * th, yAt(d) + 0.06, u.z + shadow.kz * th);
       sh.rotation.x = -Math.PI/2 + Math.atan(slopeAt(d));
       sh.rotation.z = shadow.rot;
-      const tr = (u.kind === 'ball' ? TARGET_R : 0.85 * PIN_S) * 0.95;
+      const tr = halfW * 0.95;
       sh.scale.set(tr * shadow.stretch, tr, 1);
     }
 
     /* acerto! (não vale se a bola estiver no ar) */
-    const halfW = u.kind === 'ball' ? TARGET_R : 0.85 * PIN_S;
-    if (!u.flying && jumpY < 1.0 && Math.abs(u.z) < (u.kind === 'ball' ? TARGET_R : 0.6 * PIN_S) + BALL_R + 0.4 &&
+    if (!u.flying && jumpY < 1.0 && Math.abs(u.z) < depth + BALL_R + 0.4 &&
         Math.abs(v.position.x - px) < halfW + BALL_R && speed > 3){
       totalHits++;
       if (left > 0){ left--; if (left === 0) sndDay(); }
       shake = Math.max(shake, 0.35);
-      if (u.kind === 'ball'){
-        spawnBurst(v.position.x, v.position.y, u.z, burstMats[u.colorIdx]);
+      if (u.kind === 'ball' || u.kind === 'food'){
+        /* desmancha em partículas; a voz fala a cor ou a fruta/legume em inglês */
+        const mat = u.kind === 'ball' ? burstMats[u.colorIdx] : foodBurstMats[u.foodIdx];
+        spawnBurst(v.position.x, v.position.y + (u.kind === 'food' ? FRUIT_R : 0), u.z, mat);
         sndSand();
         vibrate(80);
+        speak(u.kind === 'ball' ? SAND_COLOR_NAMES[prefs.lang][u.colorIdx] : FOODS[u.foodIdx][prefs.lang]);
         respawnTarget(v);
       } else {
         u.flying = true; u.life = 1.5;
@@ -1105,6 +1885,7 @@ function update(dt){
         u.vr = 6 + Math.random() * 8;
         sndPin();
         vibrate([40, 30, 60]);
+        if (u.kind === 'block') speak(u.char);   /* o pino não fala nada */
       }
     }
   }
@@ -1135,42 +1916,55 @@ function update(dt){
   const sec = Math.ceil(timeLeft);
   if (left > 0 && sec <= 10 && sec !== lastTick){ lastTick = sec; sndTick(); }
 
-  const sk = skyAt(dayTime);
-  scene.background = sk.sky;
-  scene.fog.color.copy(sk.fog);
-  sunLight.intensity = sk.sun;
-  hemiLight.intensity = sk.amb;
-
-  const ang = dayTime * Math.PI * 2;
-  const elev = Math.sin(ang);
-  sunMesh.position.set(-350, elev * 500 + 40, -1300);
-  sunMesh.visible = elev > -0.08;
-  moonMesh.position.set(300, -elev * 450 + 40, -1300);
-  moonMesh.visible = -elev > -0.05;
-
-  /* sombras projetadas: direção, alongamento e força seguem o astro dominante.
-     Sol baixo = sombra longa e deslocada; noite = sombra fraca da lua */
-  if (elev > 0.04){
-    const ly = elev * 500 + 40;
-    shadow.kx = Math.min(2.5, 350 / ly);
-    shadow.kz = Math.min(2.0, 650 / ly);
-    shadow.op = 0.34 * Math.min(1, elev * 2.5);
-  } else if (elev < -0.04){
-    const ly = -elev * 450 + 40;
-    shadow.kx = Math.max(-2.5, -300 / ly);
-    shadow.kz = Math.min(2.0, 650 / ly);
-    shadow.op = 0.13 * Math.min(1, -elev * 2.5);
+  if (theme === 'rainbow'){
+    /* espaço: visual fixo, sem passagem de dia para noite */
+    scene.background = SPACE_SKY;
+    scene.fog.color.setHex(0x0a0a18);
+    sunLight.intensity = 0.75;
+    hemiLight.intensity = 0.65;
+    sunMesh.visible = moonMesh.visible = false;
+    /* sombra fixa, como se houvesse uma estrela distante */
+    shadow.kx = 0.35; shadow.kz = 0.55; shadow.op = 0.26;
   } else {
-    shadow.op = 0;
+    const sk = skyAt(dayTime);
+    scene.background = sk.sky;
+    scene.fog.color.copy(sk.fog);
+    sunLight.intensity = sk.sun;
+    hemiLight.intensity = sk.amb;
+
+    const ang = dayTime * Math.PI * 2;
+    const elev = Math.sin(ang);
+    sunMesh.position.set(-350, elev * 500 + 40, -1300);
+    sunMesh.visible = elev > -0.08;
+    moonMesh.position.set(300, -elev * 450 + 40, -1300);
+    moonMesh.visible = -elev > -0.05;
+
+    /* sombras projetadas: direção, alongamento e força seguem o astro dominante.
+       Sol baixo = sombra longa e deslocada; noite = sombra fraca da lua */
+    if (elev > 0.04){
+      const ly = elev * 500 + 40;
+      shadow.kx = Math.min(2.5, 350 / ly);
+      shadow.kz = Math.min(2.0, 650 / ly);
+      shadow.op = 0.34 * Math.min(1, elev * 2.5);
+    } else if (elev < -0.04){
+      const ly = -elev * 450 + 40;
+      shadow.kx = Math.max(-2.5, -300 / ly);
+      shadow.kz = Math.min(2.0, 650 / ly);
+      shadow.op = 0.13 * Math.min(1, -elev * 2.5);
+    } else {
+      shadow.op = 0;
+    }
   }
   shadow.stretch = 1 + Math.min(1.6, Math.hypot(shadow.kx, shadow.kz) * 0.5);
   shadow.rot = -Math.atan2(shadow.kz, shadow.kx);
   targetShadowMat.opacity = shadow.op;
 
-  /* pistas que já brilham no escuro precisam de menos luz extra */
-  ballLight.intensity = isNight() ? ({ glass: 1.2, cyber: 1.2, lava: 1.5, sand: 2.0 }[theme]) : 0;
+  /* pistas que já brilham no escuro precisam de menos luz extra;
+     no arco-íris (espaço) a bola fica sempre iluminada */
+  const glowMap = { glass: 1.2, cyber: 1.2, lava: 1.5, sand: 2.0, snow: 1.6, field: 2.0, rainbow: 1.2 };
+  ballLight.intensity = (theme === 'rainbow' || isNight()) ? glowMap[theme] : 0;
   ballLight.position.set(px, 7, -3);
-  playerMat.emissiveIntensity = 0.7 * nightGlow();
+  playerMat.emissiveIntensity = 0.7 * (theme === 'rainbow' ? 1 : nightGlow());
 
   /* pulo */
   if (airborne){
@@ -1211,6 +2005,7 @@ function update(dt){
     engGain.gain.value = state === 'play' && speed > 2 ? 0.03 : 0;
     engOsc.frequency.value = 38 + speed * 2.3;
   }
+  updateMusic();   /* ABC Song em loop enquanto o jogo acontece */
 
   /* HUD */
   document.getElementById('speed').textContent = `${Math.round(speed * SPEED_DISPLAY)} km/h`;

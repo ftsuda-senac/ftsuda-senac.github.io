@@ -45,6 +45,8 @@
   .overlay .btn:active{transform:scale(.96)}
   .hidden{display:none !important}
   #eggFog,#eggIce{pointer-events:auto}
+  #pauseBtn{pointer-events:auto;cursor:pointer;color:var(--hud);font-family:inherit;font-weight:bold}
+  #pauseBtn:active{transform:scale(.94)}
   .egg-on{color:#9fd8ff;text-shadow:0 0 8px #9fd8ff,0 2px 0 #000}
   @media (max-height:480px){
     .overlay{padding:14px}
@@ -70,6 +72,7 @@
   <div class="box" id="timer">01:40</div>
   <div class="box" id="counter">FALTAM 30</div>
   <div class="box" id="speed">0 km/h</div>
+  <button class="box" id="pauseBtn" title="Pausar">II</button>
 </div>
 <div id="subhud"></div>
 <div id="weather"></div>
@@ -94,6 +97,22 @@
     </p>
     <div class="record" id="menuRecord"></div>
     <button class="btn" id="startBtn">INICIAR</button>
+  </div>
+</div>
+
+<div class="overlay hidden" id="pause">
+  <div class="overlay-inner">
+    <h1>PAUSA</h1>
+    <div id="pauseMain">
+      <p>A corrida está pausada.</p>
+      <div><button class="btn" id="resumeBtn">CONTINUAR</button></div>
+      <div><button class="btn" id="quitBtn">SAIR</button></div>
+    </div>
+    <div id="confirmQuit" class="hidden">
+      <p>Deseja realmente sair?<br>O progresso da corrida será <b>perdido</b>.</p>
+      <div><button class="btn" id="quitYes">SIM, SAIR</button></div>
+      <div><button class="btn" id="quitNo">NÃO, CONTINUAR</button></div>
+    </div>
   </div>
 </div>
 
@@ -559,7 +578,14 @@ function resetGame(){
 }
 
 /* ============================== INPUT ============================== */
-addEventListener('keydown', e => { keys[e.key.toLowerCase()] = true; if (e.key.startsWith('Arrow')) e.preventDefault(); });
+addEventListener('keydown', e => {
+  keys[e.key.toLowerCase()] = true;
+  if (e.key.startsWith('Arrow')) e.preventDefault();
+  if (e.key === 'Escape' || e.key.toLowerCase() === 'p'){
+    if (state === 'play') pauseGame();
+    else if (state === 'pause') resumeGame();
+  }
+});
 addEventListener('keyup',   e => { keys[e.key.toLowerCase()] = false; });
 
 const touch = { l:false, r:false, b:false, active:false };
@@ -604,6 +630,39 @@ document.getElementById('restartBtn').onclick = () => {
   document.getElementById('over').classList.add('hidden');
   resetGame();
 };
+
+/* ============================== PAUSA ============================== */
+function pauseGame(){
+  if (state !== 'play') return;
+  state = 'pause';
+  document.getElementById('pauseMain').classList.remove('hidden');
+  document.getElementById('confirmQuit').classList.add('hidden');
+  document.getElementById('pause').classList.remove('hidden');
+  if (engGain) engGain.gain.value = 0;
+}
+function resumeGame(){
+  if (state !== 'pause') return;
+  state = 'play';
+  document.getElementById('pause').classList.add('hidden');
+}
+document.getElementById('pauseBtn').onclick = pauseGame;
+document.getElementById('resumeBtn').onclick = resumeGame;
+document.getElementById('quitBtn').onclick = () => {
+  document.getElementById('pauseMain').classList.add('hidden');
+  document.getElementById('confirmQuit').classList.remove('hidden');
+};
+document.getElementById('quitNo').onclick = () => {
+  document.getElementById('confirmQuit').classList.add('hidden');
+  document.getElementById('pauseMain').classList.remove('hidden');
+};
+document.getElementById('quitYes').onclick = () => {
+  document.getElementById('pause').classList.add('hidden');
+  state = 'menu';
+  document.getElementById('menuRecord').textContent = best.label();
+  document.getElementById('menu').classList.remove('hidden');
+};
+/* pausa automática quando o app vai para segundo plano */
+document.addEventListener('visibilitychange', () => { if (document.hidden) pauseGame(); });
 
 addEventListener('resize', () => {
   camera.aspect = innerWidth/innerHeight;
