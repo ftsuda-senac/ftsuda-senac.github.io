@@ -1,4 +1,4 @@
-const CACHE_NAME = "enduro3d-v7";
+const CACHE_NAME = "enduro3d-v1";
 const ASSETS = [
   "./",
   "./index.html",

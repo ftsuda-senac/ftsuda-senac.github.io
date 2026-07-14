@@ -399,12 +399,15 @@ function pickVoice(){
   /* preferência por vozes femininas conhecidas de cada plataforma */
   const femaleEN = /female|woman|girl|zira|aria|jenny|michelle|ana\b|samantha|susan|salli|joanna|kendra|kimberly|ivy|allison|ava|nicky|karen|moira|tessa|serena|catherine|hazel|libby|sonia/i;
   const femalePT = /female|feminina|maria|francisca|thalita|heloisa|leticia|letícia|camila|vitoria|vitória|luciana|fernanda|yara/i;
-  const en = vs.filter(v => /^en([-_]|$)/i.test(v.lang));
+  /* vozes locais (offline) vêm antes das remotas: a fala funciona sem internet */
+  const preferLocal = list =>
+    [...list].sort((a, b) => (b.localService === true) - (a.localService === true));
+  const en = preferLocal(vs.filter(v => /^en([-_]|$)/i.test(v.lang)));
   voiceEN = en.find(v => femaleEN.test(v.name))
          || en.find(v => /google us english/i.test(v.name))   /* feminina no Chrome */
          || en.find(v => v.default) || en[0] || null;
   const ptbr = vs.filter(v => /^pt[-_]BR/i.test(v.lang));
-  const pt = ptbr.length ? ptbr : vs.filter(v => /^pt([-_]|$)/i.test(v.lang));
+  const pt = preferLocal(ptbr.length ? ptbr : vs.filter(v => /^pt([-_]|$)/i.test(v.lang)));
   voicePT = pt.find(v => femalePT.test(v.name))
          || pt.find(v => /google português do brasil/i.test(v.name))   /* feminina no Chrome */
          || pt.find(v => v.default) || pt[0] || null;

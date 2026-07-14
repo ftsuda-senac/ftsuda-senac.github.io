@@ -1,4 +1,4 @@
-const CACHE_NAME = "boliche3d-v15";
+const CACHE_NAME = "columns3d-v1";
 const ASSETS = [
   "./",
   "./index.html",
@@ -6,7 +6,8 @@ const ASSETS = [
   "./icons/icon-192.png",
   "./icons/icon-512.png",
   "./icons/icon-192-maskable.png",
-  "./icons/icon-512-maskable.png"
+  "./icons/icon-512-maskable.png",
+  "https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"
 ];
 
 self.addEventListener("install", (event) => {

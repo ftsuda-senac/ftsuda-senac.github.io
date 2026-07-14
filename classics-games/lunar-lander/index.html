@@ -1,0 +1,1050 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>LUNAR LANDER 3D</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#000000">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Lunar Lander">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<style>
+  :root{
+    --hud:#ffd24a; --hud-dim:#b8912a; --panel:rgba(8,10,20,.72); --alert:#ff5544;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:"Courier New",ui-monospace,monospace}
+  #c{display:block;width:100%;height:100%}
+  .hud{position:fixed;left:0;right:0;top:0;display:flex;justify-content:space-between;align-items:flex-start;
+       gap:8px;padding:12px 14px;color:var(--hud);text-shadow:0 2px 0 #000;pointer-events:none;user-select:none;z-index:5;
+       flex-wrap:wrap}
+  .hud .box{background:var(--panel);border:2px solid var(--hud-dim);padding:6px 12px;letter-spacing:2px;font-weight:bold;
+            font-size:clamp(13px,2.8vw,20px)}
+  #pauseBtn{pointer-events:auto;cursor:pointer}
+  #fuel.low, #spd.low{color:var(--alert);border-color:var(--alert);animation:blink .6s steps(2) infinite}
+  @keyframes blink{50%{opacity:.35}}
+  #subhud{position:fixed;top:64px;right:14px;text-align:right;color:#9fb8d8;text-shadow:0 2px 0 #000;
+          letter-spacing:1px;font-size:clamp(11px,2.2vw,14px);z-index:5;pointer-events:none;line-height:1.7}
+  #msg{position:fixed;left:0;right:0;top:34%;text-align:center;color:var(--hud);z-index:6;pointer-events:none;
+       font-weight:bold;letter-spacing:4px;font-size:clamp(18px,5vw,40px);text-shadow:3px 3px 0 #000;
+       opacity:0;transition:opacity .4s}
+  #msg.on{opacity:1}
+  #msg.bad{color:var(--alert)}
+  #msg.good{color:#7CFC00}
+  .overlay{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;
+           overflow-y:auto;-webkit-overflow-scrolling:touch;
+           background:rgba(0,0,10,.78);color:var(--hud);z-index:10;text-align:center;padding:24px}
+  .overlay-inner{margin:auto 0;max-width:660px;width:100%;padding:16px 0}
+  .overlay h1{font-size:clamp(28px,8vw,64px);letter-spacing:8px;text-shadow:4px 4px 0 #335,8px 8px 0 #000;margin-bottom:14px}
+  .overlay p{color:#cfd6ff;line-height:1.7;letter-spacing:1px;font-size:clamp(12px,2.4vw,17px)}
+  .overlay .record{margin-top:12px;color:#7CFC00;letter-spacing:2px;font-weight:bold;font-size:clamp(13px,2.8vw,18px)}
+  .overlay .btn{margin-top:20px;background:#335;color:#fff;border:3px solid #ffd24a;padding:14px 34px;
+                font-family:inherit;font-size:clamp(15px,3vw,20px);letter-spacing:4px;cursor:pointer;font-weight:bold}
+  .overlay .btn:active{transform:scale(.96)}
+  .overlay .btn.secondary{display:block;margin:14px auto 0;background:#223244;border-color:#9fb8d8;
+                          color:#cfd6ff;padding:10px 26px;font-size:clamp(13px,2.6vw,17px)}
+  .optlabel{margin-top:18px;color:#9fb8d8;letter-spacing:3px;font-weight:bold;font-size:clamp(12px,2.4vw,15px)}
+  .swatches{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:10px}
+  .swatch{width:38px;height:38px;border-radius:50%;border:3px solid #555;cursor:pointer;padding:0}
+  .swatch.sel{border-color:#ffd24a;box-shadow:0 0 10px #ffd24a}
+  .tracks{display:flex;justify-content:center;gap:12px;margin-top:10px;flex-wrap:wrap}
+  .trackbtn{background:var(--panel);color:#cfd6ff;border:3px solid #555;padding:10px 18px;cursor:pointer;
+            font-family:inherit;font-weight:bold;letter-spacing:2px;font-size:clamp(12px,2.6vw,16px)}
+  .trackbtn.sel{border-color:#ffd24a;color:var(--hud);box-shadow:0 0 10px #ffd24a}
+  .hidden{display:none !important}
+  @media (max-height:520px){
+    .overlay{padding:14px}
+    .overlay-inner{padding:8px 0}
+    .overlay h1{font-size:clamp(22px,7vw,36px);letter-spacing:5px;margin-bottom:8px}
+    .overlay p{line-height:1.45;font-size:clamp(11px,2vw,14px)}
+    .overlay .record{margin-top:6px}
+    .overlay .btn{margin-top:12px;padding:10px 26px;font-size:clamp(13px,2.6vw,17px)}
+    .optlabel{margin-top:10px}
+    .swatch{width:30px;height:30px}
+  }
+  #touch{position:fixed;inset:auto 0 0 0;display:none;justify-content:space-between;align-items:flex-end;
+         padding:10px 14px calc(env(safe-area-inset-bottom, 0px) + 26px);z-index:6}
+  #touch .tgroup{display:flex;gap:12px}
+  #touch button{width:78px;height:78px;border-radius:14px;border:2px solid var(--hud-dim);
+                background:var(--panel);color:var(--hud);font-size:28px;font-weight:bold;touch-action:none}
+  #touch #btnT{width:96px;height:96px;font-size:38px}
+  @media (pointer:coarse){ #touch{display:flex} }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div class="hud">
+  <div class="box" id="missao">MISSÃO 1</div>
+  <div class="box" id="fuel">⛽ 100</div>
+  <div class="box" id="spd">↓ 0,0&nbsp; → 0,0</div>
+  <div class="box" id="alt">ALT 0 m</div>
+  <div class="box" id="score">0 PTS</div>
+  <div class="box" id="pauseBtn">⏸</div>
+</div>
+<div id="subhud"></div>
+<div id="msg"></div>
+
+<div id="touch">
+  <div class="tgroup">
+    <button id="btnL">↺</button>
+    <button id="btnR">↻</button>
+  </div>
+  <button id="btnT">🔥</button>
+</div>
+
+<div class="overlay" id="menu">
+  <div class="overlay-inner">
+    <h1>LUNAR LANDER</h1>
+    <p>
+      Pilote o módulo lunar e <b>pouse suavemente nas plataformas</b> marcadas.<br>
+      Desça devagar: até <b>3 m/s na vertical</b>, <b>2 m/s na horizontal</b> e com a nave quase reta.<br>
+      Plataformas menores valem mais pontos: <b>×2, ×3 e ×5</b>.<br>
+      Cada pouso inicia uma nova missão, com terreno novo e menos combustível.<br>
+      Fique de olho no tanque — <b>sem combustível, não há motor!</b><br><br>
+      ↺ ↻ giram a nave (◀ ▶ ou A/D) &nbsp;•&nbsp; motor: ▲, W ou ESPAÇO (ou 🔥 na tela)<br>
+      Você tem <b>3 naves</b> &nbsp;•&nbsp; P: pausar
+    </p>
+    <div class="record" id="menuRecord"></div>
+    <button class="btn" id="startBtn">INICIAR</button>
+    <button class="btn secondary" id="cfgBtn">⚙ CONFIGURAÇÕES</button>
+  </div>
+</div>
+
+<div class="overlay hidden" id="config">
+  <div class="overlay-inner">
+    <h1>OPÇÕES</h1>
+    <div class="optlabel">MUNDO (CADA UM TEM SUA GRAVIDADE)</div>
+    <div class="tracks">
+      <button class="trackbtn worldbtn" data-world="lua">🌙 LUA — 1,6 m/s²</button>
+      <button class="trackbtn worldbtn" data-world="europa">🧊 EUROPA — 1,3 m/s² (FÁCIL)</button>
+      <button class="trackbtn worldbtn" data-world="marte">🔴 MARTE — 3,7 m/s² (DIFÍCIL)</button>
+    </div>
+    <div class="optlabel">COR DA NAVE</div>
+    <div class="swatches" id="swatches"></div>
+    <button class="btn" id="cfgBack">VOLTAR</button>
+  </div>
+</div>
+
+<div class="overlay hidden" id="pause">
+  <div class="overlay-inner">
+    <h1>PAUSA</h1>
+    <p>Pressione P ou toque no botão para continuar.</p>
+    <button class="btn" id="btnResume">CONTINUAR</button>
+    <button class="btn secondary" id="btnQuit">🚪 SAIR DO JOGO</button>
+  </div>
+</div>
+
+<div class="overlay hidden" id="quit">
+  <div class="overlay-inner">
+    <h1>SAIR?</h1>
+    <p>Tem certeza que deseja sair e voltar para a tela inicial?<br>
+       O progresso desta partida será <b>perdido</b>.</p>
+    <button class="btn" id="quitYes">SIM, SAIR</button>
+    <button class="btn secondary" id="quitNo">NÃO, CONTINUAR JOGANDO</button>
+  </div>
+</div>
+
+<div class="overlay hidden" id="over">
+  <div class="overlay-inner">
+    <h1 id="overTitle">FIM DE MISSÃO</h1>
+    <p id="overMsg"></p>
+    <div class="record" id="overRecord"></div>
+    <button class="btn" id="restartBtn">JOGAR DE NOVO</button>
+    <button class="btn secondary" id="overMenuBtn">🏠 TELA INICIAL</button>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(() => {
+'use strict';
+
+/* ============================== CONFIG ============================== */
+const WORLD_W = 420;                 // largura do terreno (unidades)
+const WORLD_HALF = WORLD_W / 2;
+const S = 2;                         // escala física: 1 metro real = 2 unidades
+const TER_STEP = 6;                  // distância entre pontos do terreno
+const ROT_SPEED = 2.4;               // giro da nave (rad/s)
+const MAX_TILT = 2.0;                // inclinação máxima permitida (rad)
+const FUEL_MAX = 100;
+const FUEL_BURN = 9.5;               // consumo por segundo de motor ligado
+const FUEL_LOW = 25;                 // abaixo disso o alerta pisca
+const LEG_DY = 3.25;                 // distância do centro da nave até os pés
+const FEET_HALF = 2.6;               // meia distância entre os pés (colisão)
+const SAFE_VY = 6.0;                 // |vy| máximo para pousar (= 3 m/s)
+const SAFE_VX = 4.0;                 // |vx| máximo para pousar (= 2 m/s)
+const SAFE_TILT = 0.22;              // inclinação máxima para pousar (rad ≈ 12°)
+const SHIPS_START = 3;
+const PAD_W = { 2: 30, 3: 20, 5: 12 };   // largura base por multiplicador
+
+/* combustível inicial de cada missão (diminui aos poucos) */
+const levelFuel = lvl => Math.max(60, FUEL_MAX - (lvl - 1) * 5);
+/* a gravidade sobe um pouco a cada missão (até +40%) */
+const levelGravity = lvl => Math.min(1.4, 1 + 0.04 * (lvl - 1));
+
+/* mundos: gravidade real (m/s²) e paleta do cenário */
+const WORLDS = {
+  lua:    { label:'LUA',    g:1.62, ground:0x8e8e96, ridge:0x4a4a55, ridge2:0x30303a,
+            rock:0x74747e, sky:0x04040c, fog:0x0a0a18, companion:'terra'  },
+  marte:  { label:'MARTE',  g:3.71, ground:0xb85c30, ridge:0x7a3a20, ridge2:0x4e2414,
+            rock:0x96482a, sky:0x160a08, fog:0x2a1410, companion:'fobos'  },
+  europa: { label:'EUROPA', g:1.31, ground:0xbdd4e4, ridge:0x6a8aa8, ridge2:0x415f7e,
+            rock:0x92b0c6, sky:0x030310, fog:0x0a1220, companion:'jupiter'},
+};
+const WORLD_KEYS = ['lua', 'marte', 'europa'];
+
+/* cores selecionáveis da nave */
+const SHIP_COLORS = [
+  { id:'branca',   hex:0xeeeeee },
+  { id:'azul',     hex:0x2266ee },
+  { id:'vermelho', hex:0xdd2233 },
+  { id:'verde',    hex:0x22aa44 },
+  { id:'amarelo',  hex:0xeecc22 },
+  { id:'ciano',    hex:0x22cccc },
+  { id:'roxa',     hex:0x9a4ae8 },
+  { id:'cinza',    hex:0x888899 },
+];
+
+/* ============================== PLACAR / PREFERÊNCIAS ============================== */
+const _mem = {};
+const store = {
+  get(k){ try { return localStorage.getItem(k); } catch(e){ return _mem[k] ?? null; } },
+  set(k, v){ try { localStorage.setItem(k, v); } catch(e){ _mem[k] = String(v); } },
+};
+const best = {
+  score: parseInt(store.get('lander.bestScore') || '0', 10),
+  level: parseInt(store.get('lander.bestLevel') || '0', 10),
+  save(){
+    store.set('lander.bestScore', this.score);
+    store.set('lander.bestLevel', this.level);
+  },
+  label(){
+    return this.score > 0
+      ? `RECORDE — ${this.score} PONTOS • MISSÃO ${this.level}`
+      : '';
+  }
+};
+const prefs = {
+  color: store.get('lander.color') || 'branca',
+  world: store.get('lander.world') || 'lua',
+};
+if (!WORLD_KEYS.includes(prefs.world)) prefs.world = 'lua';
+if (!SHIP_COLORS.some(c => c.id === prefs.color)) prefs.color = 'branca';
+
+/* ============================== ESTADO ============================== */
+let scene, camera, renderer, clock;
+let sunLight, hemiLight;
+let stars, terra, fobos, jupiter;
+let terrainGrp = null;               // malha do terreno + plataformas (refeita a cada missão)
+let terPts = [], pads = [], padLights = [];
+let lander, landerBody, flameOut, flameIn, flameLight;
+let particles = [];
+
+let state = 'menu';                  // menu | play | landed | crash | pause | over
+let pauseFrom = 'play';              // estado a retomar depois da pausa
+let stateT = 0;                      // tempo dentro do estado atual (landed/crash)
+let world = WORLDS[prefs.world];
+let level = 1, score = 0, ships = SHIPS_START;
+let fuel = FUEL_MAX, fuelWarned = false, lowBeepT = 0;
+let pos = { x: 0, y: 110 }, vel = { x: 0, y: 0 }, angle = 0;
+let thrustOn = false, shake = 0, idleT = 0, msgTimer = null;
+
+const keys = {};
+
+/* ============================== ÁUDIO ============================== */
+let AC = null, thrGain = null;
+function initAudio(){
+  if (AC) return;
+  try {
+    AC = new (window.AudioContext || window.webkitAudioContext)();
+    /* motor: ruído branco em loop filtrado, com o ganho controlado pelo empuxo */
+    const len = AC.sampleRate;
+    const buf = AC.createBuffer(1, len, AC.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+    const src = AC.createBufferSource();
+    src.buffer = buf; src.loop = true;
+    const flt = AC.createBiquadFilter();
+    flt.type = 'lowpass'; flt.frequency.value = 420;
+    thrGain = AC.createGain(); thrGain.gain.value = 0;
+    src.connect(flt).connect(thrGain).connect(AC.destination);
+    src.start();
+  } catch(e){ AC = null; }
+}
+document.addEventListener('visibilitychange', () => {
+  if (!AC) return;
+  if (document.hidden){ if (AC.state === 'running') AC.suspend(); }
+  else { if (AC.state === 'suspended') AC.resume(); }
+});
+function blip(freq, dur, vol, type){
+  if (!AC) return;
+  const o = AC.createOscillator(), g = AC.createGain();
+  o.type = type || 'square'; o.frequency.value = freq;
+  g.gain.setValueAtTime(vol, AC.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, AC.currentTime + dur);
+  o.connect(g).connect(AC.destination);
+  o.start(); o.stop(AC.currentTime + dur);
+}
+function vibrate(p){
+  if (navigator.vibrate){ try { navigator.vibrate(p); } catch(e){} }
+}
+const sndLand = () => { [523, 659, 784, 1046].forEach((f, i) => setTimeout(() => blip(f, .14, .07), i * 110)); };
+const sndCrash = () => {
+  if (!AC) return;
+  blip(55, .5, .16, 'sawtooth');
+  const len = AC.sampleRate * 0.4;
+  const buf = AC.createBuffer(1, len, AC.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+  const src = AC.createBufferSource(); src.buffer = buf;
+  const g = AC.createGain(); g.gain.value = 0.22;
+  src.connect(g).connect(AC.destination); src.start();
+};
+const sndLow  = () => blip(880, .07, .05);
+const sndEmpty = () => { blip(440, .18, .09); setTimeout(() => blip(300, .3, .09), 180); };
+
+/* ============================== MENSAGEM CENTRAL ============================== */
+const msgEl = document.getElementById('msg');
+function showMsg(text, cls, dur){
+  msgEl.innerHTML = text;
+  msgEl.className = 'on' + (cls ? ' ' + cls : '');
+  clearTimeout(msgTimer);
+  msgTimer = setTimeout(() => { msgEl.className = ''; }, dur || 2000);
+}
+
+/* ============================== TEXTURAS (canvas) ============================== */
+function makeEarthTexture(){
+  const size = 128;
+  const cv = document.createElement('canvas'); cv.width = cv.height = size;
+  const cx = cv.getContext('2d');
+  cx.fillStyle = '#2266cc'; cx.fillRect(0, 0, size, size);
+  cx.fillStyle = '#2a9a4a';
+  for (let i = 0; i < 9; i++){
+    cx.beginPath();
+    cx.ellipse(Math.random()*size, Math.random()*size, 8 + Math.random()*18, 6 + Math.random()*12,
+               Math.random()*Math.PI, 0, Math.PI*2);
+    cx.fill();
+  }
+  cx.fillStyle = 'rgba(255,255,255,.75)';
+  for (let i = 0; i < 14; i++){
+    cx.beginPath();
+    cx.ellipse(Math.random()*size, Math.random()*size, 6 + Math.random()*16, 2 + Math.random()*4,
+               Math.random()*Math.PI, 0, Math.PI*2);
+    cx.fill();
+  }
+  return new THREE.CanvasTexture(cv);
+}
+function makeJupiterTexture(){
+  const size = 128;
+  const cv = document.createElement('canvas'); cv.width = cv.height = size;
+  const cx = cv.getContext('2d');
+  const bands = ['#c8a878', '#a87848', '#e8d8b8', '#b88858', '#d8b888', '#986838'];
+  let y = 0;
+  while (y < size){
+    const h = 8 + Math.random()*16;
+    cx.fillStyle = bands[(Math.random()*bands.length)|0];
+    cx.fillRect(0, y, size, h);
+    y += h;
+  }
+  /* grande mancha vermelha */
+  cx.fillStyle = '#c84828';
+  cx.beginPath(); cx.ellipse(size*0.62, size*0.62, 15, 9, 0, 0, Math.PI*2); cx.fill();
+  return new THREE.CanvasTexture(cv);
+}
+function makeFobosTexture(){
+  const size = 64;
+  const cv = document.createElement('canvas'); cv.width = cv.height = size;
+  const cx = cv.getContext('2d');
+  cx.fillStyle = '#6a6058'; cx.fillRect(0, 0, size, size);
+  for (let i = 0; i < 18; i++){
+    cx.fillStyle = `rgba(0,0,0,${0.12 + Math.random()*0.2})`;
+    cx.beginPath();
+    cx.arc(Math.random()*size, Math.random()*size, 2 + Math.random()*6, 0, Math.PI*2);
+    cx.fill();
+  }
+  return new THREE.CanvasTexture(cv);
+}
+function makePadLabelTexture(mult){
+  const cv = document.createElement('canvas'); cv.width = 128; cv.height = 64;
+  const cx = cv.getContext('2d');
+  const col = mult >= 5 ? '#ffd24a' : mult >= 3 ? '#7CFC00' : '#5ec8ff';
+  cx.fillStyle = col;
+  cx.font = 'bold 46px "Arial Black", Arial, sans-serif';
+  cx.textAlign = 'center'; cx.textBaseline = 'middle';
+  cx.shadowColor = '#000'; cx.shadowOffsetX = 3; cx.shadowOffsetY = 3;
+  cx.fillText('×' + mult, 64, 34);
+  return new THREE.CanvasTexture(cv);
+}
+
+/* ============================== MUNDO 3D ============================== */
+function buildWorld(){
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(55, innerWidth/innerHeight, 0.5, 1600);
+  camera.position.set(0, 60, 90);
+  renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('c'), antialias: true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.setSize(innerWidth, innerHeight);
+  addEventListener('resize', () => {
+    camera.aspect = innerWidth/innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(innerWidth, innerHeight);
+  });
+
+  sunLight = new THREE.DirectionalLight(0xffffff, 0.95);
+  sunLight.position.set(80, 140, 90);
+  scene.add(sunLight);
+  hemiLight = new THREE.HemisphereLight(0x8899bb, 0x222228, 0.45);
+  scene.add(hemiLight);
+  scene.add(new THREE.AmbientLight(0xffffff, 0.12));
+
+  /* estrelas: domo de pontos ao redor da cena */
+  const starPos = [];
+  for (let i = 0; i < 900; i++){
+    const a = Math.random() * Math.PI * 2;
+    const e = Math.random() * Math.PI * 0.52;            /* só acima do horizonte */
+    const r = 700;
+    starPos.push(Math.cos(a)*Math.cos(e)*r, Math.sin(e)*r - 40, Math.sin(a)*Math.cos(e)*r);
+  }
+  const starGeo = new THREE.BufferGeometry();
+  starGeo.setAttribute('position', new THREE.Float32BufferAttribute(starPos, 3));
+  stars = new THREE.Points(starGeo, new THREE.PointsMaterial({
+    color: 0xffffff, size: 2.0, sizeAttenuation: false, fog: false,
+  }));
+  scene.add(stars);
+
+  /* corpos no céu, um por mundo (a visibilidade segue o tema) */
+  terra = new THREE.Mesh(new THREE.SphereGeometry(22, 24, 18),
+    new THREE.MeshBasicMaterial({ map: makeEarthTexture(), fog: false }));
+  terra.position.set(-160, 170, -420);
+  scene.add(terra);
+  jupiter = new THREE.Mesh(new THREE.SphereGeometry(52, 24, 18),
+    new THREE.MeshBasicMaterial({ map: makeJupiterTexture(), fog: false }));
+  jupiter.position.set(180, 190, -480);
+  scene.add(jupiter);
+  fobos = new THREE.Mesh(new THREE.SphereGeometry(9, 12, 9),
+    new THREE.MeshBasicMaterial({ map: makeFobosTexture(), fog: false }));
+  fobos.position.set(-130, 150, -380);
+  scene.add(fobos);
+
+  buildLander();
+  applyWorld();
+}
+
+function applyWorld(){
+  world = WORLDS[prefs.world];
+  scene.background = new THREE.Color(world.sky);
+  scene.fog = new THREE.Fog(world.fog, 160, 700);
+  terra.visible   = world.companion === 'terra';
+  jupiter.visible = world.companion === 'jupiter';
+  fobos.visible   = world.companion === 'fobos';
+}
+
+/* -------------------- terreno da missão -------------------- */
+function terrainY(x){
+  const cx = Math.max(-WORLD_HALF, Math.min(WORLD_HALF, x));
+  const i = Math.max(0, Math.min(terPts.length - 2, Math.floor((cx + WORLD_HALF) / TER_STEP)));
+  const x0 = -WORLD_HALF + i * TER_STEP;
+  const f = (cx - x0) / TER_STEP;
+  return terPts[i] + (terPts[i+1] - terPts[i]) * f;
+}
+/* solo sob um ponto: topo da plataforma quando estiver sobre uma */
+function groundAt(x){
+  for (const p of pads){
+    if (x >= p.x0 && x <= p.x1) return { y: p.y + 0.5, pad: p };
+  }
+  return { y: terrainY(x), pad: null };
+}
+
+function ridgeMesh(amp, base, zPos, colorHex){
+  /* serra de fundo: silhueta 2D simples para dar profundidade */
+  const shape = new THREE.Shape();
+  shape.moveTo(-WORLD_HALF - 200, -60);
+  const p1 = Math.random()*9, p2 = Math.random()*9;
+  for (let x = -WORLD_HALF - 200; x <= WORLD_HALF + 200; x += 16){
+    const y = base + amp * (0.6 * Math.sin(x*0.012 + p1) + 0.4 * Math.sin(x*0.031 + p2));
+    shape.lineTo(x, y);
+  }
+  shape.lineTo(WORLD_HALF + 200, -60);
+  shape.closePath();
+  const m = new THREE.Mesh(new THREE.ShapeGeometry(shape),
+    new THREE.MeshBasicMaterial({ color: colorHex }));
+  m.position.z = zPos;
+  return m;
+}
+
+function buildLevel(){
+  /* descarta o terreno anterior */
+  if (terrainGrp){
+    scene.remove(terrainGrp);
+    terrainGrp.traverse(o => {
+      if (o.geometry) o.geometry.dispose();
+      if (o.material && !o.material._shared){
+        if (o.material.map) o.material.map.dispose();
+        o.material.dispose();
+      }
+    });
+  }
+  terrainGrp = new THREE.Group();
+  padLights = [];
+
+  /* perfil de alturas: soma de senos + ruído leve */
+  const n = Math.floor(WORLD_W / TER_STEP) + 1;
+  const p1 = Math.random()*9, p2 = Math.random()*9, p3 = Math.random()*9;
+  const rough = 1 + 0.12 * Math.min(6, level - 1);        /* terreno mais bravo por missão */
+  terPts = [];
+  for (let i = 0; i < n; i++){
+    const x = -WORLD_HALF + i * TER_STEP;
+    let y = 20 + rough * (12*Math.sin(x*0.011 + p1) + 7*Math.sin(x*0.027 + p2) + 4*Math.sin(x*0.053 + p3));
+    y += (Math.random() - 0.5) * 4;
+    terPts.push(Math.max(5, Math.min(46, y)));
+  }
+
+  /* plataformas: nas primeiras missões há uma ×2 extra; encolhem com o nível */
+  const shrink = Math.max(0.55, 1 - 0.055 * (level - 1));
+  const mults = level < 3 ? [2, 2, 3, 5] : [2, 3, 5];
+  for (let i = mults.length - 1; i > 0; i--){             /* embaralha as posições */
+    const j = (Math.random() * (i + 1)) | 0;
+    [mults[i], mults[j]] = [mults[j], mults[i]];
+  }
+  pads = [];
+  const zoneW = (WORLD_W - 60) / mults.length;
+  mults.forEach((mult, zi) => {
+    const w = Math.max(8.5, PAD_W[mult] * shrink);
+    const z0 = -WORLD_HALF + 30 + zi * zoneW;
+    const cx = z0 + w/2 + 8 + Math.random() * Math.max(1, zoneW - w - 16);
+    const i0 = Math.max(0, Math.floor((cx - w/2 + WORLD_HALF) / TER_STEP));
+    const i1 = Math.min(n - 1, Math.ceil((cx + w/2 + WORLD_HALF) / TER_STEP));
+    let py = 0;
+    for (let i = i0; i <= i1; i++) py += terPts[i];
+    py = Math.max(7, Math.min(40, py / (i1 - i0 + 1)));
+    for (let i = i0; i <= i1; i++) terPts[i] = py;        /* achata o terreno sob a base */
+    pads.push({ x0: -WORLD_HALF + i0 * TER_STEP, x1: -WORLD_HALF + i1 * TER_STEP, y: py, mult });
+  });
+
+  /* malha do solo: perfil extrudado em profundidade */
+  const shape = new THREE.Shape();
+  shape.moveTo(-WORLD_HALF, -80);
+  for (let i = 0; i < n; i++) shape.lineTo(-WORLD_HALF + i * TER_STEP, terPts[i]);
+  shape.lineTo(WORLD_HALF, -80);
+  shape.closePath();
+  const groundGeo = new THREE.ExtrudeGeometry(shape, { depth: 34, bevelEnabled: false });
+  groundGeo.translate(0, 0, -17);
+  terrainGrp.add(new THREE.Mesh(groundGeo, new THREE.MeshLambertMaterial({ color: world.ground })));
+
+  /* serras de fundo (paralaxe) */
+  terrainGrp.add(ridgeMesh(26, 46, -70,  world.ridge));
+  terrainGrp.add(ridgeMesh(38, 66, -150, world.ridge2));
+
+  /* pedras espalhadas fora das plataformas */
+  const rockGeo = new THREE.DodecahedronGeometry(1, 0);
+  const rockMat = new THREE.MeshLambertMaterial({ color: world.rock });
+  for (let i = 0; i < 26; i++){
+    const x = -WORLD_HALF + 10 + Math.random() * (WORLD_W - 20);
+    if (pads.some(p => x > p.x0 - 4 && x < p.x1 + 4)) continue;
+    const r = new THREE.Mesh(rockGeo, rockMat);
+    const s = 0.6 + Math.random() * 1.5;
+    r.scale.setScalar(s);
+    r.position.set(x, terrainY(x) + s * 0.3, (Math.random() - 0.5) * 22);
+    r.rotation.set(Math.random()*3, Math.random()*3, Math.random()*3);
+    terrainGrp.add(r);
+  }
+
+  /* plataformas: base metálica, luzes nas pontas e etiqueta com o multiplicador */
+  const padMat = new THREE.MeshLambertMaterial({ color: 0x333a44 });
+  const padTopMat = new THREE.MeshLambertMaterial({ color: 0x555f6e });
+  for (const p of pads){
+    const w = p.x1 - p.x0;
+    const base = new THREE.Mesh(new THREE.BoxGeometry(w, 1.4, 12), padMat);
+    base.position.set((p.x0 + p.x1)/2, p.y - 0.2, 0);
+    terrainGrp.add(base);
+    const top = new THREE.Mesh(new THREE.BoxGeometry(w, 0.3, 12), padTopMat);
+    top.position.set((p.x0 + p.x1)/2, p.y + 0.35, 0);
+    terrainGrp.add(top);
+    for (const ex of [p.x0 + 0.8, p.x1 - 0.8]){
+      const lite = new THREE.Mesh(new THREE.SphereGeometry(0.55, 8, 6),
+        new THREE.MeshBasicMaterial({ color: 0xff3333 }));
+      lite.position.set(ex, p.y + 1.0, 5.2);
+      terrainGrp.add(lite);
+      padLights.push({ m: lite, phase: Math.random() * 6 });
+    }
+    const label = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: makePadLabelTexture(p.mult), transparent: true, fog: false,
+    }));
+    label.scale.set(11, 5.5, 1);
+    label.position.set((p.x0 + p.x1)/2, p.y + 7.5, 0);
+    terrainGrp.add(label);
+  }
+
+  scene.add(terrainGrp);
+}
+
+/* -------------------- nave -------------------- */
+let shipMat;                        /* material da cabine (troca com a cor escolhida) */
+function buildLander(){
+  lander = new THREE.Group();
+  landerBody = new THREE.Group();
+  lander.add(landerBody);
+
+  const gold = new THREE.MeshLambertMaterial({ color: 0xc8952a });   /* estágio de descida */
+  const dark = new THREE.MeshLambertMaterial({ color: 0x444450 });
+  shipMat = new THREE.MeshLambertMaterial({
+    color: SHIP_COLORS.find(c => c.id === prefs.color).hex,
+  });
+  gold._shared = dark._shared = shipMat._shared = true;
+
+  const descent = new THREE.Mesh(new THREE.CylinderGeometry(2.0, 2.4, 1.6, 8), gold);
+  landerBody.add(descent);
+  const ascent = new THREE.Mesh(new THREE.SphereGeometry(1.55, 16, 12), shipMat);
+  ascent.position.y = 1.95;
+  landerBody.add(ascent);
+  const win = new THREE.Mesh(new THREE.SphereGeometry(0.5, 10, 8),
+    new THREE.MeshLambertMaterial({ color: 0x111820 }));
+  win.scale.z = 0.4;
+  win.position.set(0, 2.25, 1.35);
+  landerBody.add(win);
+  const nozzle = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 1.1, 1.3, 12), dark);
+  nozzle.position.y = -1.35;
+  landerBody.add(nozzle);
+
+  /* quatro pernas com sapatas */
+  const legMat = new THREE.MeshLambertMaterial({ color: 0x999aa8 });
+  legMat._shared = true;
+  const up = new THREE.Vector3(0, 1, 0);
+  for (const a of [Math.PI/4, 3*Math.PI/4, 5*Math.PI/4, 7*Math.PI/4]){
+    const start = new THREE.Vector3(Math.cos(a)*1.7, -0.4, Math.sin(a)*1.7);
+    const end   = new THREE.Vector3(Math.cos(a)*2.9, -3.05, Math.sin(a)*2.9);
+    const dir = end.clone().sub(start);
+    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, dir.length(), 6), legMat);
+    leg.position.copy(start).add(end).multiplyScalar(0.5);
+    leg.quaternion.setFromUnitVectors(up, dir.clone().normalize());
+    landerBody.add(leg);
+    const foot = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 0.22, 10), legMat);
+    foot.position.set(end.x, -3.14, end.z);
+    landerBody.add(foot);
+  }
+
+  /* chama do motor (dois cones aditivos) + luz */
+  flameOut = new THREE.Mesh(new THREE.ConeGeometry(0.85, 3.2, 10),
+    new THREE.MeshBasicMaterial({ color: 0xff7722, transparent: true, opacity: 0.85,
+                                  blending: THREE.AdditiveBlending, depthWrite: false }));
+  flameOut.rotation.x = Math.PI;
+  flameOut.position.y = -3.4;
+  landerBody.add(flameOut);
+  flameIn = new THREE.Mesh(new THREE.ConeGeometry(0.42, 2.0, 8),
+    new THREE.MeshBasicMaterial({ color: 0xffe9a0, transparent: true, opacity: 0.95,
+                                  blending: THREE.AdditiveBlending, depthWrite: false }));
+  flameIn.rotation.x = Math.PI;
+  flameIn.position.y = -2.9;
+  landerBody.add(flameIn);
+  flameOut.visible = flameIn.visible = false;
+  flameLight = new THREE.PointLight(0xff8833, 0, 40);
+  flameLight.position.y = -3.5;
+  landerBody.add(flameLight);
+
+  scene.add(lander);
+}
+
+/* ============================== PARTÍCULAS (explosão) ============================== */
+const partGeo = new THREE.BoxGeometry(0.7, 0.7, 0.7);
+function burst(x, y, colors, count, power){
+  for (let i = 0; i < count; i++){
+    const mat = new THREE.MeshLambertMaterial({ color: colors[(Math.random()*colors.length)|0] });
+    const m = new THREE.Mesh(partGeo, mat);
+    m.position.set(x + (Math.random()-0.5)*2, y + (Math.random()-0.5)*2, (Math.random()-0.5)*3);
+    const a = Math.random() * Math.PI * 2;
+    const v = power * (0.4 + Math.random() * 0.8);
+    particles.push({
+      m,
+      vx: Math.cos(a) * v, vy: Math.abs(Math.sin(a)) * v * 1.2 + power * 0.35,
+      vz: (Math.random()-0.5) * v * 0.6,
+      rx: (Math.random()-0.5)*9, rz: (Math.random()-0.5)*9,
+      life: 1.4 + Math.random() * 0.7,
+    });
+    scene.add(m);
+  }
+}
+function updateParticles(dt, g){
+  for (let i = particles.length - 1; i >= 0; i--){
+    const p = particles[i];
+    p.life -= dt;
+    p.vy -= g * 0.7 * dt;
+    p.m.position.x += p.vx * dt;
+    p.m.position.y += p.vy * dt;
+    p.m.position.z += p.vz * dt;
+    p.m.rotation.x += p.rx * dt;
+    p.m.rotation.z += p.rz * dt;
+    if (p.m.position.y < terrainY(p.m.position.x) + 0.3){
+      p.m.position.y = terrainY(p.m.position.x) + 0.3;
+      p.vy = Math.abs(p.vy) * 0.35;
+      p.vx *= 0.7;
+    }
+    if (p.life < 0.5) p.m.scale.setScalar(Math.max(0.01, p.life / 0.5));
+    if (p.life <= 0){
+      scene.remove(p.m);
+      p.m.material.dispose();
+      particles.splice(i, 1);
+    }
+  }
+}
+
+/* ============================== FLUXO DO JOGO ============================== */
+function gravity(){
+  return world.g * S * levelGravity(level);
+}
+function thrustAccel(){
+  return gravity() * 2.35;            /* relação empuxo/peso constante entre os mundos */
+}
+
+function spawn(){
+  pos.x = -WORLD_HALF + 30 + Math.random() * 40;
+  pos.y = 112;
+  vel.x = 15; vel.y = 0;
+  angle = 0;
+  thrustOn = false;
+  fuelWarned = false;
+  lander.visible = true;
+  camera.position.set(pos.x, pos.y + 8, 110);
+}
+
+function startGame(){
+  initAudio();
+  level = 1; score = 0; ships = SHIPS_START;
+  fuel = levelFuel(1);
+  applyWorld();
+  buildLevel();
+  spawn();
+  state = 'play';
+  showMsg('MISSÃO 1', '', 1600);
+}
+
+function nextLevel(){
+  level++;
+  fuel = Math.min(FUEL_MAX, Math.max(levelFuel(level), fuel + 40));
+  buildLevel();
+  spawn();
+  state = 'play';
+  showMsg(`MISSÃO ${level}`, '', 1600);
+}
+
+function doLand(pad){
+  pos.y = pad.y + 0.5 + LEG_DY;
+  vel.x = vel.y = 0;
+  angle = 0;
+  thrustOn = false;
+  state = 'landed'; stateT = 0;
+  let pts = 100 * pad.mult;
+  let txt = `POUSO! +${pts}`;
+  if (lastVy > -SAFE_VY * 0.5 && Math.abs(lastVx) < SAFE_VX * 0.5 && Math.abs(lastTilt) < 0.1){
+    pts += 50 * pad.mult;
+    txt = `POUSO PERFEITO! +${pts}`;
+  }
+  score += pts;
+  sndLand();
+  vibrate(60);
+  showMsg(txt, 'good', 2200);
+}
+
+function doCrash(reason){
+  ships--;
+  lander.visible = false;
+  thrustOn = false;
+  const shipHex = SHIP_COLORS.find(c => c.id === prefs.color).hex;
+  burst(pos.x, pos.y, [0xff7722, 0xffcc44, shipHex, 0xc8952a, 0x666670], 42, 26);
+  shake = 1.3;
+  sndCrash();
+  vibrate([80, 40, 120]);
+  state = 'crash'; stateT = 0;
+  showMsg(reason + (ships > 0 ? `<br>NAVES RESTANTES: ${ships}` : ''), 'bad', 2200);
+}
+
+function gameOver(){
+  state = 'over';
+  const isRecord = score > best.score;
+  if (isRecord){
+    best.score = score;
+    best.level = level;
+    best.save();
+  }
+  document.getElementById('overTitle').textContent = 'FIM DE MISSÃO';
+  document.getElementById('overMsg').innerHTML =
+    `Suas naves acabaram, comandante.<br><br>` +
+    `PONTOS: <b>${score}</b> &nbsp;•&nbsp; MISSÕES: <b>${level}</b><br>` +
+    `MUNDO: ${world.label}`;
+  document.getElementById('overRecord').textContent =
+    (isRecord ? '★ NOVO RECORDE! ' : '') + best.label();
+  document.getElementById('over').classList.remove('hidden');
+}
+
+/* velocidades no instante do toque (para pontuar o pouso) */
+let lastVx = 0, lastVy = 0, lastTilt = 0;
+
+function handleContact(){
+  const gL = groundAt(pos.x - FEET_HALF);
+  const gC = groundAt(pos.x);
+  const gR = groundAt(pos.x + FEET_HALF);
+  const gy = Math.max(gL.y, gC.y, gR.y);
+  if (pos.y - LEG_DY > gy) return;
+
+  lastVx = vel.x; lastVy = vel.y; lastTilt = angle;
+  const pad = (gL.pad && gL.pad === gR.pad && gL.pad === gC.pad) ? gL.pad : null;
+
+  if (!pad)                            doCrash('BATEU NO TERRENO!');
+  else if (vel.y < -SAFE_VY)           doCrash('MUITO RÁPIDO NA VERTICAL!');
+  else if (Math.abs(vel.x) > SAFE_VX)  doCrash('MUITO RÁPIDO NA HORIZONTAL!');
+  else if (Math.abs(angle) > SAFE_TILT) doCrash('A NAVE ESTAVA INCLINADA!');
+  else                                 doLand(pad);
+}
+
+/* ============================== ENTRADA ============================== */
+addEventListener('keydown', e => {
+  if (['ArrowLeft','ArrowRight','ArrowUp','ArrowDown',' '].includes(e.key)) e.preventDefault();
+  keys[e.key.toLowerCase()] = true;
+  if (e.key.toLowerCase() === 'p') togglePause();
+});
+addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
+
+function bindHold(id, key){
+  const el = document.getElementById(id);
+  const on  = e => { e.preventDefault(); keys[key] = true; };
+  const off = e => { e.preventDefault(); keys[key] = false; };
+  el.addEventListener('pointerdown', on);
+  el.addEventListener('pointerup', off);
+  el.addEventListener('pointercancel', off);
+  el.addEventListener('pointerleave', off);
+}
+bindHold('btnL', 'arrowleft');
+bindHold('btnR', 'arrowright');
+bindHold('btnT', 'arrowup');
+
+/* ============================== TELAS / BOTÕES ============================== */
+const show = id => document.getElementById(id).classList.remove('hidden');
+const hide = id => document.getElementById(id).classList.add('hidden');
+
+document.getElementById('startBtn').addEventListener('click', () => {
+  hide('menu');
+  startGame();
+});
+document.getElementById('restartBtn').addEventListener('click', () => {
+  hide('over');
+  startGame();
+});
+document.getElementById('cfgBtn').addEventListener('click', () => {
+  hide('menu'); show('config');
+});
+document.getElementById('cfgBack').addEventListener('click', () => {
+  hide('config'); show('menu');
+});
+document.getElementById('pauseBtn').addEventListener('click', togglePause);
+document.getElementById('btnResume').addEventListener('click', togglePause);
+document.getElementById('btnQuit').addEventListener('click', () => { hide('pause'); show('quit'); });
+document.getElementById('quitNo').addEventListener('click', () => { hide('quit'); show('pause'); });
+
+/* volta para a tela inicial (usado ao sair da pausa e no fim de jogo) */
+function goToMenu(from){
+  hide(from);
+  state = 'menu';
+  lander.visible = true;
+  document.getElementById('menuRecord').textContent = best.label();
+  show('menu');
+}
+document.getElementById('quitYes').addEventListener('click', () => goToMenu('quit'));
+document.getElementById('overMenuBtn').addEventListener('click', () => goToMenu('over'));
+
+function togglePause(){
+  if (state === 'pause'){
+    state = pauseFrom;
+    hide('pause');
+    clock.getDelta();                 /* zera o delta acumulado na pausa */
+  } else if (state === 'play' || state === 'landed' || state === 'crash'){
+    pauseFrom = state;
+    state = 'pause';
+    if (thrGain) thrGain.gain.value = 0;
+    show('pause');
+  }
+}
+
+/* opções: mundo */
+function refreshWorldBtns(){
+  document.querySelectorAll('.worldbtn').forEach(b =>
+    b.classList.toggle('sel', b.dataset.world === prefs.world));
+}
+document.querySelectorAll('.worldbtn').forEach(b => b.addEventListener('click', () => {
+  prefs.world = b.dataset.world;
+  store.set('lander.world', prefs.world);
+  refreshWorldBtns();
+  applyWorld();
+  buildLevel();          /* refaz o cenário do fundo com a nova paleta */
+}));
+refreshWorldBtns();
+
+/* opções: cor da nave */
+const swWrap = document.getElementById('swatches');
+for (const c of SHIP_COLORS){
+  const b = document.createElement('button');
+  b.className = 'swatch' + (c.id === prefs.color ? ' sel' : '');
+  b.style.background = '#' + c.hex.toString(16).padStart(6, '0');
+  b.title = c.id;
+  b.addEventListener('click', () => {
+    prefs.color = c.id;
+    store.set('lander.color', c.id);
+    shipMat.color.setHex(c.hex);
+    swWrap.querySelectorAll('.swatch').forEach(s => s.classList.remove('sel'));
+    b.classList.add('sel');
+  });
+  swWrap.appendChild(b);
+}
+
+/* ============================== ATUALIZAÇÃO ============================== */
+function fmt(v){ return Math.abs(v).toFixed(1).replace('.', ','); }
+
+function update(dt){
+  const g = gravity();
+
+  if (state === 'play'){
+    /* rotação */
+    const steer = (keys['arrowleft'] || keys['a'] ? -1 : 0) + (keys['arrowright'] || keys['d'] ? 1 : 0);
+    angle = Math.max(-MAX_TILT, Math.min(MAX_TILT, angle + steer * ROT_SPEED * dt));
+
+    /* motor: só funciona com combustível */
+    const wantThrust = keys['arrowup'] || keys['w'] || keys[' '];
+    thrustOn = !!wantThrust && fuel > 0;
+    if (wantThrust && fuel <= 0 && !fuelWarned){
+      fuelWarned = true;
+      sndEmpty();
+      showMsg('SEM COMBUSTÍVEL!', 'bad', 1800);
+    }
+    if (thrustOn){
+      const t = thrustAccel();
+      vel.x += Math.sin(angle) * t * dt;
+      vel.y += Math.cos(angle) * t * dt;
+      fuel = Math.max(0, fuel - FUEL_BURN * dt);
+    }
+    vel.y -= g * dt;
+    pos.x += vel.x * dt;
+    pos.y += vel.y * dt;
+
+    /* paredes invisíveis nas bordas do mundo */
+    if (pos.x < -WORLD_HALF + 6){ pos.x = -WORLD_HALF + 6; vel.x = Math.max(0, vel.x); }
+    if (pos.x >  WORLD_HALF - 6){ pos.x =  WORLD_HALF - 6; vel.x = Math.min(0, vel.x); }
+
+    /* aviso sonoro de pouco combustível */
+    if (fuel > 0 && fuel < FUEL_LOW){
+      lowBeepT += dt;
+      if (lowBeepT > 1){ lowBeepT = 0; sndLow(); }
+    }
+
+    handleContact();
+  }
+  else if (state === 'landed'){
+    stateT += dt;
+    if (stateT > 2.4) nextLevel();
+  }
+  else if (state === 'crash'){
+    stateT += dt;
+    if (stateT > 2.4){
+      if (ships > 0){
+        fuel = levelFuel(level);
+        spawn();
+        state = 'play';
+      } else {
+        gameOver();
+      }
+    }
+  }
+
+  /* nave: posição, inclinação e chama */
+  lander.position.set(pos.x, pos.y, 0);
+  landerBody.rotation.z = -angle;
+  flameOut.visible = flameIn.visible = thrustOn;
+  if (thrustOn){
+    const f = 0.75 + Math.random() * 0.5;
+    flameOut.scale.set(1, f, 1);
+    flameIn.scale.set(1, f * 1.1, 1);
+    flameLight.intensity = 1.4 + Math.random() * 0.6;
+  } else {
+    flameLight.intensity = 0;
+  }
+  if (thrGain) thrGain.gain.value = thrustOn ? 0.12 : 0;
+
+  updateParticles(dt, g);
+
+  /* luzes das plataformas piscando */
+  const now = performance.now() / 1000;
+  for (const l of padLights){
+    l.m.material.color.setHex(Math.sin((now + l.phase) * 5) > 0 ? 0xff3333 : 0x551111);
+  }
+
+  /* câmera: segue a nave e aproxima perto do chão */
+  const alt = Math.max(0, pos.y - LEG_DY - groundAt(pos.x).y);
+  shake = Math.max(0, shake - dt * 1.6);
+  const sx = (Math.random()-0.5) * shake * 2, sy = (Math.random()-0.5) * shake * 1.4;
+  const camX = Math.max(-WORLD_HALF + 45, Math.min(WORLD_HALF - 45, pos.x));
+  const dist = Math.max(32, Math.min(115, 30 + alt * 0.75));
+  camera.position.x += ((camX + sx) - camera.position.x) * Math.min(1, dt * 4);
+  camera.position.y += ((pos.y + 9 + sy) - camera.position.y) * Math.min(1, dt * 4);
+  camera.position.z += (dist - camera.position.z) * Math.min(1, dt * 2.5);
+  camera.lookAt(camX, pos.y - Math.min(alt, 34) * 0.35, 0);
+
+  /* HUD */
+  document.getElementById('missao').textContent = `MISSÃO ${level}`;
+  const fEl = document.getElementById('fuel');
+  fEl.textContent = `⛽ ${Math.ceil(fuel)}`;
+  fEl.classList.toggle('low', fuel < FUEL_LOW);
+  const sEl = document.getElementById('spd');
+  sEl.innerHTML = `${vel.y >= 0 ? '↑' : '↓'} ${fmt(vel.y / S)}&nbsp; ${vel.x >= 0 ? '→' : '←'} ${fmt(vel.x / S)}`;
+  sEl.classList.toggle('low',
+    state === 'play' && alt < 44 && (vel.y < -SAFE_VY || Math.abs(vel.x) > SAFE_VX));
+  document.getElementById('alt').textContent = `ALT ${Math.round(alt / S)} m`;
+  document.getElementById('score').textContent = `${score} PTS`;
+  document.getElementById('subhud').innerHTML =
+    `${'🚀'.repeat(Math.max(0, ships))}<br>` +
+    `${world.label} — GRAVIDADE ${world.g.toFixed(1).replace('.', ',')} m/s²`;
+}
+
+/* câmera do menu: passeio suave sobre o terreno */
+function idleCam(dt){
+  idleT += dt;
+  const x = Math.sin(idleT * 0.12) * 120;
+  camera.position.x += (x - camera.position.x) * Math.min(1, dt);
+  camera.position.y += (55 - camera.position.y) * Math.min(1, dt);
+  camera.position.z += (110 - camera.position.z) * Math.min(1, dt);
+  camera.lookAt(x * 0.8, 24, 0);
+  lander.position.set(x * 0.8, 70 + Math.sin(idleT * 0.7) * 3, 0);
+  landerBody.rotation.z = Math.sin(idleT * 0.4) * 0.12;
+  const now = performance.now() / 1000;
+  for (const l of padLights){
+    l.m.material.color.setHex(Math.sin((now + l.phase) * 5) > 0 ? 0xff3333 : 0x551111);
+  }
+}
+
+function loop(){
+  requestAnimationFrame(loop);
+  const dt = Math.min(0.05, clock.getDelta());
+  if (state === 'play' || state === 'landed' || state === 'crash') update(dt);
+  else if (state === 'menu') idleCam(dt);
+  terra.rotation.y += dt * 0.05;
+  jupiter.rotation.y += dt * 0.04;
+  renderer.render(scene, camera);
+}
+
+buildWorld();
+buildLevel();
+clock = new THREE.Clock();
+document.getElementById('menuRecord').textContent = best.label();
+loop();
+})();
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./service-worker.js');
+  });
+}
+</script>
+</body>
+</html>

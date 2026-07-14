@@ -6,7 +6,8 @@
 
 const CACHE_NAME  = 'mental-timer-v1';
 const APP_SHELL   = [
-  './mental-timer.html',
+  './',
+  './index.html',
   './manifest.json',
   './icons/icon-192.png',
   './icons/icon-512.png',
@@ -83,7 +84,7 @@ self.addEventListener('fetch', event => {
         }).catch(() => {
           // Fallback offline: devolve o HTML principal para navegação
           if (request.destination === 'document') {
-            return caches.match('./mental-timer.html');
+            return caches.match('./index.html');
           }
         });
       })

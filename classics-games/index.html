@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Classics Games</title>
+<meta name="theme-color" content="#000000">
+<style>
+  :root{
+    --bg:#05050a;
+    --panel:rgba(15,17,30,.75);
+    --panel-border:rgba(255,255,255,.08);
+    --fg:#eef0ff;
+    --dim:#9aa0c0;
+    --accent:#ffd24a;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    min-height:100vh;
+    background:
+      radial-gradient(1200px 600px at 15% -10%, rgba(255,80,140,.16), transparent 60%),
+      radial-gradient(1000px 700px at 110% 10%, rgba(70,140,255,.16), transparent 55%),
+      radial-gradient(900px 500px at 50% 120%, rgba(80,255,180,.10), transparent 60%),
+      var(--bg);
+    color:var(--fg);
+    font-family:"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+  .stars{
+    position:fixed; inset:0; z-index:0; pointer-events:none; opacity:.6;
+    background-image:
+      radial-gradient(1.5px 1.5px at 20px 30px, #fff, transparent),
+      radial-gradient(1.5px 1.5px at 140px 90px, #fff, transparent),
+      radial-gradient(1px 1px at 250px 40px, #fff, transparent),
+      radial-gradient(1px 1px at 320px 160px, #fff, transparent),
+      radial-gradient(1.5px 1.5px at 60px 200px, #fff, transparent),
+      radial-gradient(1px 1px at 400px 260px, #fff, transparent);
+    background-repeat:repeat;
+    background-size:420px 300px;
+  }
+  header{
+    position:relative; z-index:1;
+    text-align:center;
+    padding:48px 20px 20px;
+  }
+  header h1{
+    margin:0;
+    font-size:clamp(2rem, 6vw, 3.2rem);
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    background:linear-gradient(90deg,#ffd24a,#ff5f8f 45%,#5fa8ff 90%);
+    -webkit-background-clip:text;
+    background-clip:text;
+    color:transparent;
+    text-shadow:0 0 40px rgba(255,210,74,.25);
+  }
+  header p{
+    margin:10px auto 0;
+    max-width:520px;
+    color:var(--dim);
+    font-size:.98rem;
+  }
+  main{
+    position:relative; z-index:1;
+    max-width:1080px;
+    margin:0 auto;
+    padding:28px 20px 60px;
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(230px, 1fr));
+    gap:22px;
+  }
+  a.card{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    text-align:center;
+    text-decoration:none;
+    color:inherit;
+    background:var(--panel);
+    border:1px solid var(--panel-border);
+    border-radius:18px;
+    padding:24px 18px 20px;
+    backdrop-filter:blur(6px);
+    transition:transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+    position:relative;
+    overflow:hidden;
+  }
+  a.card::before{
+    content:"";
+    position:absolute; inset:0;
+    background:radial-gradient(220px 140px at 50% -20%, var(--glow, rgba(255,210,74,.25)), transparent 70%);
+    opacity:0;
+    transition:opacity .25s ease;
+  }
+  a.card:hover, a.card:focus-visible{
+    transform:translateY(-6px);
+    border-color:rgba(255,255,255,.22);
+    box-shadow:0 14px 34px rgba(0,0,0,.45);
+  }
+  a.card:hover::before, a.card:focus-visible::before{ opacity:1; }
+  .icon-wrap{
+    width:92px; height:92px;
+    border-radius:22px;
+    display:flex; align-items:center; justify-content:center;
+    background:rgba(255,255,255,.04);
+    border:1px solid rgba(255,255,255,.08);
+    margin-bottom:16px;
+    position:relative; z-index:1;
+  }
+  .icon-wrap img{
+    width:68px; height:68px;
+    image-rendering:auto;
+    border-radius:14px;
+  }
+  .card h2{
+    margin:0 0 6px;
+    font-size:1.12rem;
+    letter-spacing:.02em;
+    position:relative; z-index:1;
+  }
+  .card p{
+    margin:0;
+    color:var(--dim);
+    font-size:.85rem;
+    line-height:1.4;
+    position:relative; z-index:1;
+  }
+  .play{
+    margin-top:16px;
+    font-size:.78rem;
+    letter-spacing:.12em;
+    text-transform:uppercase;
+    color:var(--accent);
+    font-weight:600;
+    position:relative; z-index:1;
+  }
+  footer{
+    position:relative; z-index:1;
+    text-align:center;
+    color:var(--dim);
+    font-size:.78rem;
+    padding:10px 20px 40px;
+  }
+</style>
+</head>
+<body>
+<div class="stars"></div>
+
+<header>
+  <h1>🕹️ Classics Games</h1>
+  <p>Uma coleção de mini-clássicos remixados em 3D, direto no navegador — sem instalar nada. Escolha um jogo para começar.</p>
+</header>
+
+<main>
+  <a class="card" href="enduro/" style="--glow:rgba(255,120,80,.28)">
+    <div class="icon-wrap"><img src="enduro/icons/icon-192.png" alt="Enduro 3D"></div>
+    <h2>🏁 Enduro 3D</h2>
+    <p>Corrida estilo Enduro em 3D, desviando do tráfego pista afora.</p>
+    <span class="play">Jogar ▶</span>
+  </a>
+
+  <a class="card" href="columns/" style="--glow:rgba(120,200,255,.28)">
+    <div class="icon-wrap"><img src="columns/icons/icon-192.png" alt="Columns 3D"></div>
+    <h2>🧩 Columns 3D</h2>
+    <p>Quebra-cabeça de blocos coloridos, no estilo Master System, em 3D.</p>
+    <span class="play">Jogar ▶</span>
+  </a>
+
+  <a class="card" href="boliche/" style="--glow:rgba(255,210,74,.28)">
+    <div class="icon-wrap"><img src="boliche/icons/icon-192.png" alt="Boliche 3D"></div>
+    <h2>🎳 Boliche 3D</h2>
+    <p>Role a bola pela pista e acerte pinos e alvos de areia.</p>
+    <span class="play">Jogar ▶</span>
+  </a>
+
+  <a class="card" href="lunar-lander/" style="--glow:rgba(180,160,255,.28)">
+    <div class="icon-wrap"><img src="lunar-lander/icons/icon-192.png" alt="Lunar Lander 3D"></div>
+    <h2>🚀 Lunar Lander 3D</h2>
+    <p>Pilote o módulo lunar e pouse suavemente na Lua, em Marte e em Europa.</p>
+    <span class="play">Jogar ▶</span>
+  </a>
+
+  <a class="card" href="frogger/" style="--glow:rgba(120,255,150,.28)">
+    <div class="icon-wrap"><img src="frogger/icons/icon-192.png" alt="Frogger 3D"></div>
+    <h2>🐸 Frogger 3D</h2>
+    <p>Atravesse ruas e rios sem virar estatística, em 3D.</p>
+    <span class="play">Jogar ▶</span>
+  </a>
+
+  <a class="card" href="mental-timer/" style="--glow:rgba(255,80,80,.28)">
+    <div class="icon-wrap"><img src="mental-timer/icons/icon-192.png" alt="Mental Timer"></div>
+    <h2>⏱ Mental Timer</h2>
+    <p>Teste sua percepção de tempo — pressione, conte e acerte!</p>
+    <span class="play">Jogar ▶</span>
+  </a>
+</main>
+
+<footer>
+  Cada jogo funciona como um PWA independente — pode ser instalado e jogado offline.
+</footer>
+
+</body>
+</html>
