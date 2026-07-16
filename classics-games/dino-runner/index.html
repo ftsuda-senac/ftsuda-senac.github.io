@@ -1,0 +1,1230 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>DINO RUNNER 3D</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#000000">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Dino Runner 3D">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<style>
+  :root{
+    --hud:#ffd24a; --hud-dim:#b8912a; --panel:rgba(8,10,20,.72); --alert:#ff5544;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:"Courier New",ui-monospace,monospace}
+  #c{display:block;width:100%;height:100%;touch-action:none}
+  .hud{position:fixed;left:0;right:0;top:0;display:flex;justify-content:space-between;align-items:flex-start;
+       gap:8px;padding:12px 14px;color:var(--hud);text-shadow:0 2px 0 #000;pointer-events:none;user-select:none;z-index:5;
+       flex-wrap:wrap}
+  .hud .box{background:var(--panel);border:2px solid var(--hud-dim);padding:6px 12px;letter-spacing:2px;font-weight:bold;
+            font-size:clamp(12px,2.6vw,18px)}
+  #armorBox{color:#7fd8ff;border-color:#3d7fa0}
+  #msg{position:fixed;top:44%;left:50%;transform:translate(-50%,-50%);color:#7CFC00;font-weight:bold;
+       letter-spacing:4px;text-shadow:0 2px 0 #000,0 0 18px #7CFC00;z-index:5;pointer-events:none;
+       font-size:clamp(20px,6vw,44px);opacity:0;transition:opacity .2s;text-align:center}
+  .overlay{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;
+           overflow-y:auto;-webkit-overflow-scrolling:touch;
+           background:rgba(0,0,10,.82);color:var(--hud);z-index:10;text-align:center;padding:24px}
+  .overlay-inner{margin:auto 0;max-width:760px;width:100%;padding:16px 0}
+  .overlay h1{font-size:clamp(26px,7vw,54px);letter-spacing:6px;text-shadow:4px 4px 0 #1a5a2a,8px 8px 0 #000;margin-bottom:14px}
+  .overlay p{color:#cfd6ff;line-height:1.8;letter-spacing:1px;font-size:clamp(12px,2.4vw,16px)}
+  .overlay .record{margin-top:14px;color:#7CFC00;letter-spacing:2px;font-weight:bold;font-size:clamp(13px,2.8vw,18px)}
+  .overlay .btn{margin-top:20px;background:#1a7a2e;color:#fff;border:3px solid #ffd24a;padding:14px 34px;
+                font-family:inherit;font-size:clamp(15px,3vw,20px);letter-spacing:4px;cursor:pointer;font-weight:bold}
+  .overlay .btn.secondary{background:#5a2020;border-color:#ff8a6a}
+  .overlay .btn:active{transform:scale(.96)}
+  .btnrow{display:flex;gap:16px;justify-content:center;flex-wrap:wrap}
+  .hidden{display:none !important}
+
+  #dinoPreview{display:block;width:min(60vw,240px);height:180px;margin:10px auto 0;border-radius:14px;
+               border:2px solid var(--hud-dim);background:radial-gradient(120px 90px at 50% 60%,rgba(124,252,0,.10),rgba(255,255,255,.02));}
+  .dinogrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:10px}
+  .dinocard{background:rgba(255,255,255,.04);border:2px solid var(--hud-dim);border-radius:10px;padding:10px 8px;
+            cursor:pointer;text-align:center;transition:border-color .15s, background .15s}
+  .dinocard .sw{width:40px;height:40px;border-radius:50%;margin:0 auto 6px;border:2px solid rgba(255,255,255,.25)}
+  .dinocard b{display:block;font-size:clamp(11px,2.2vw,14px);letter-spacing:1px;color:#fff}
+  .dinocard span{display:block;font-size:clamp(9px,1.8vw,11px);color:#9aa0c0;margin-top:2px}
+  .dinocard.sel{border-color:#7CFC00;background:rgba(124,252,0,.12)}
+  .dinocard:hover{border-color:#fff}
+  #dinoDesc{min-height:3.4em;margin-top:12px;color:#7CFC00;font-size:clamp(11px,2.2vw,14px);letter-spacing:.5px}
+
+  @media (max-height:520px){
+    .overlay{padding:14px}
+    .overlay-inner{padding:8px 0}
+    .overlay h1{font-size:clamp(20px,6vw,36px);letter-spacing:4px;margin-bottom:8px}
+    .overlay p{line-height:1.4;font-size:clamp(11px,2vw,13px)}
+    .dinocard{padding:6px 4px}
+    .dinocard .sw{width:28px;height:28px;margin-bottom:4px}
+    #dinoPreview{height:120px}
+  }
+  #touch{position:fixed;inset:auto 0 0 0;display:none;justify-content:space-between;align-items:flex-end;
+         padding:10px 14px calc(env(safe-area-inset-bottom, 0px) + 46px);z-index:6;pointer-events:none}
+  #touch .cluster{display:flex;gap:12px;pointer-events:none}
+  #touch button{width:84px;height:84px;border-radius:14px;border:2px solid var(--hud-dim);
+                background:var(--panel);color:var(--hud);font-size:28px;font-weight:bold;touch-action:none;
+                pointer-events:auto;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;
+                -webkit-tap-highlight-color:transparent}
+  @media (pointer:coarse){ #touch{display:flex} }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div class="hud">
+  <div class="box" id="scoreLbl">PONTOS 0</div>
+  <div class="box" id="hiLbl">RECORDE 0</div>
+  <div class="box" id="dinoLbl">T-REX</div>
+  <div class="box hidden" id="armorBox">ARMADURA ●</div>
+</div>
+<div id="msg"></div>
+
+<div id="touch">
+  <div class="cluster">
+    <button id="btnLeft">◀</button>
+    <button id="btnRight">▶</button>
+  </div>
+  <div class="cluster">
+    <button id="btnDuck">▼</button>
+    <button id="btnJump">▲</button>
+  </div>
+</div>
+
+<div class="overlay" id="menu">
+  <div class="overlay-inner">
+    <h1>🦖 DINO RUNNER 3D</h1>
+    <p>
+      Corra pela trilha pré-histórica sem parar!<br>
+      A pista tem <b>3 faixas</b> — mova-se para os lados para desviar.<br>
+      <b>Pule</b> obstáculos e buracos, <b>abaixe</b> sob os pterodáctilos<br>
+      ou <b>troque de faixa</b> para escapar.<br>
+      Pegue os <b>ovos</b> ✦ no chão passando por eles — os que flutuam, pegue <b>pulando</b>.<br><br>
+      ◀/▶ ou A/D: trocar de faixa &nbsp;·&nbsp; ▲/Espaço/toque: pular &nbsp;·&nbsp; ▼/S: abaixar &nbsp;·&nbsp; P: pausar
+    </p>
+    <canvas id="dinoPreview"></canvas>
+    <div class="dinogrid" id="dinoGrid"></div>
+    <div id="dinoDesc"></div>
+    <div class="record" id="menuRecord"></div>
+    <button class="btn" id="startBtn">INICIAR CORRIDA</button>
+  </div>
+</div>
+
+<div class="overlay hidden" id="hitPrompt">
+  <div class="overlay-inner">
+    <h1 id="hitTitle">OPA!</h1>
+    <p id="hitMsg"></p>
+    <div class="record" id="hitRecord"></div>
+    <div class="btnrow">
+      <button class="btn" id="continueBtn">CONTINUAR</button>
+      <button class="btn secondary" id="stopBtn">ENCERRAR</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay hidden" id="over">
+  <div class="overlay-inner">
+    <h1>FIM DE JOGO</h1>
+    <p id="overMsg"></p>
+    <div class="record" id="overRecord"></div>
+    <button class="btn" id="restartBtn">ESCOLHER DINOSSAURO</button>
+  </div>
+</div>
+
+<div class="overlay hidden" id="pause">
+  <div class="overlay-inner">
+    <h1>PAUSA</h1>
+    <p>Pressione P ou toque no botão para continuar.</p>
+    <button class="btn" id="resumeBtn">CONTINUAR</button>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(() => {
+'use strict';
+
+/* ============================== ESPÉCIES ============================== */
+const SPECIES = {
+  trex: {
+    key:'trex', name:'T-REX', label:'Tiranossauro Rex',
+    color:0x3aa85a, dark:0x2a7a40, belly:0xa8e078,
+    speed:1.00, jumpH:1.00, jumpT:1.00, hbScale:1.00,
+    stance:'biped', bodyLen:2.2, bodyH:1.05, bodyW:1.0, neckLen:0.55, headSize:0.95,
+    legLen:1.25, legThick:0.42, tailLen:2.0, armSize:0.26, features:[],
+    perk:null,
+    desc:'O clássico rei dos predadores. Equilibrado em tudo — sem vantagens nem fraquezas.'
+  },
+  raptor: {
+    key:'raptor', name:'VELOCIRAPTOR', label:'Velociraptor',
+    color:0xc98a2c, dark:0x8f5f18, belly:0xf0d090,
+    speed:1.15, jumpH:1.12, jumpT:0.88, hbScale:0.80,
+    stance:'biped', bodyLen:1.5, bodyH:0.68, bodyW:0.58, neckLen:0.5, headSize:0.5,
+    legLen:1.0, legThick:0.24, tailLen:1.8, armSize:0.15, features:['crest'],
+    perk:null,
+    desc:'Ágil e veloz, com pulo alto e corpo pequeno — difícil de acertar, mas frágil.'
+  },
+  galli: {
+    key:'galli', name:'GALIMIMO', label:'Gallimimus',
+    color:0xdfe4a0, dark:0xa8ad70, belly:0xf5f2d8,
+    speed:1.28, jumpH:1.00, jumpT:1.00, hbScale:0.85,
+    stance:'biped', bodyLen:1.6, bodyH:0.62, bodyW:0.52, neckLen:1.05, headSize:0.4,
+    legLen:1.3, legThick:0.2, tailLen:1.6, armSize:0.1, features:[],
+    perk:'eggBonus',
+    desc:'O mais veloz da matilha. Forrageador esperto: ovos coletados valem 20% a mais.'
+  },
+  trike: {
+    key:'trike', name:'TRICERATOPS', label:'Triceratops',
+    color:0x6a7fae, dark:0x475a80, belly:0xb8c4e0,
+    speed:0.85, jumpH:0.80, jumpT:1.15, hbScale:1.25,
+    stance:'quad', bodyLen:2.3, bodyH:1.05, bodyW:1.3, neckLen:0.25, headSize:1.0,
+    legLen:0.85, legThick:0.5, tailLen:1.1, armSize:0, features:['frill','horns'],
+    perk:'smashGround',
+    desc:'Pesado e lento, mas os chifres destroem obstáculos no chão sem sofrer dano.'
+  },
+  stego: {
+    key:'stego', name:'ESTEGOSSAURO', label:'Stegosaurus',
+    color:0x7a9a5a, dark:0x53703a, belly:0xc8dba0,
+    speed:0.80, jumpH:0.75, jumpT:1.2, hbScale:1.30,
+    stance:'quad', bodyLen:2.5, bodyH:0.95, bodyW:1.05, neckLen:0.25, headSize:0.55,
+    legLen:0.8, legThick:0.46, tailLen:1.5, armSize:0, features:['plates','club'],
+    perk:'smashAerial',
+    desc:'O mais lento de todos. As placas e a cauda com espinhos derrubam pterodáctilos.'
+  },
+  anky: {
+    key:'anky', name:'ANQUILOSSAURO', label:'Ankylosaurus',
+    color:0x8a6a4a, dark:0x5e4830, belly:0xd0b088,
+    speed:0.85, jumpH:0.85, jumpT:1.15, hbScale:1.28,
+    stance:'quad', bodyLen:2.2, bodyH:0.85, bodyW:1.2, neckLen:0.2, headSize:0.6,
+    legLen:0.65, legThick:0.5, tailLen:1.3, armSize:0, features:['armorplates','club'],
+    perk:'armor',
+    desc:'Blindado da cabeça à cauda: sobrevive à primeira colisão de cada corrida.'
+  },
+};
+const SPECIES_ORDER = ['trex','raptor','galli','trike','stego','anky'];
+
+/* ============================== CONFIG ============================== */
+const HISCORE_KEY = 'dinorunner3d.hiscore';
+const BASE_SPEED = 9, MAX_SPEED = 22, ACCEL = 0.14;
+const JUMP_DUR_BASE = 0.6, JUMP_H_BASE = 2.5;
+const GROUND_CLEAR = 1.0;
+const AERIAL_BAND = [1.15, 2.3];
+const HOLE_AIRBORNE_MIN = 0.15;
+const COLLIDE_Z_BASE = 0.55;
+const SPAWN_Z = -85, REMOVE_Z = 6;
+const EGG_POINTS = 50;
+const SCORE_RATE = 1.1;
+const LANE_X = [-1.7, 0, 1.7];      // 3 faixas da pista
+const LANE_LERP = 12;               // velocidade da troca de faixa
+const LANE_HIT_X = 0.95;            // distância lateral máxima para colidir/coletar
+const SLOT_SPACING = 13;            // espaço fixo (em metros) entre os slots de spawn
+const FIRST_SLOT_GAP = 20;          // fôlego antes do primeiro slot
+const EGG_GROUND_Y = 0.9, EGG_AIR_Y = 2.0;
+
+/* ============================== PLACAR PERSISTENTE ============================== */
+const _mem = {};
+const store = {
+  get(k){ try { return localStorage.getItem(k); } catch(e){ return _mem[k] ?? null; } },
+  set(k, v){ try { localStorage.setItem(k, v); } catch(e){ _mem[k] = String(v); } },
+};
+let hiscore = parseInt(store.get(HISCORE_KEY) || '0', 10);
+
+/* ============================== ÁUDIO ============================== */
+let AC = null;
+function initAudio(){
+  if (AC) return;
+  try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){ AC = null; }
+}
+document.addEventListener('visibilitychange', () => {
+  if (!AC) return;
+  if (document.hidden){ if (AC.state === 'running') AC.suspend(); }
+  else { if (AC.state === 'suspended') AC.resume(); }
+});
+function blip(freq, dur, vol, type, slide){
+  if (!AC) return;
+  const o = AC.createOscillator(), g = AC.createGain();
+  o.type = type || 'square'; o.frequency.value = freq;
+  if (slide) o.frequency.exponentialRampToValueAtTime(slide, AC.currentTime + dur);
+  g.gain.setValueAtTime(vol, AC.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, AC.currentTime + dur);
+  o.connect(g).connect(AC.destination);
+  o.start(); o.stop(AC.currentTime + dur);
+}
+const sndJump   = () => blip(480, .12, .05, 'square', 760);
+const sndDuck   = () => blip(220, .08, .04, 'sine');
+const sndEgg    = () => { blip(900, .08, .05, 'square', 1400); };
+const sndHit    = () => { blip(90, .35, .16, 'sawtooth'); blip(55, .45, .13, 'square'); };
+const sndSmash  = () => { blip(150, .18, .12, 'sawtooth', 60); blip(320, .1, .08, 'square'); };
+const sndArmor  = () => { [700,1000].forEach((f,i)=>setTimeout(()=>blip(f,.12,.07),i*90)); };
+const sndTick   = () => blip(1200, .05, .03);
+
+/* ============================== ESTADO ============================== */
+let scene, camera, renderer, clock;
+let state = 'menu'; // menu | play | hit | ask | pause | over
+let selected = 'trex';
+let sp = SPECIES[selected];
+let score = 0, elapsed = 0, speed = BASE_SPEED;
+let movers = [];
+let dinoMesh = null, dinoAnim = {};
+let decorTimer = 0;
+let travelDist = 0, nextSlotDist = FIRST_SLOT_GAP;
+let ambientT = 0;
+let msgTimer = 0;
+let hitTimer = 0, hitKind = '';
+let groundStripes = [];
+
+const player = {
+  jumping:false, jumpT:0, jumpDur:JUMP_DUR_BASE, jumpHmax:JUMP_H_BASE, jumpY:0,
+  ducking:false, armorUsed:false, invuln:0,
+  lane:1, x:0,
+};
+
+/* ============================== AJUDANTES: FORMAS ARREDONDADAS ============================== */
+function makeBlob(rx, ry, rz, mat, segs){
+  segs = segs || 12;
+  const m = new THREE.Mesh(new THREE.SphereGeometry(1, segs, Math.max(6, Math.round(segs * 0.7))), mat);
+  m.scale.set(rx, ry, rz);
+  return m;
+}
+function makeCapsule(radius, length, mat, segs){
+  segs = segs || 10;
+  const g = new THREE.Group();
+  const cyl = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, Math.max(0.02, length), segs), mat);
+  g.add(cyl);
+  const capSegs = Math.max(6, Math.round(segs / 2));
+  const capTop = new THREE.Mesh(new THREE.SphereGeometry(radius, segs, capSegs), mat);
+  capTop.position.y = length / 2;
+  g.add(capTop);
+  const capBot = capTop.clone();
+  capBot.position.y = -length / 2;
+  g.add(capBot);
+  return g;
+}
+
+/* ============================== MODELOS: DINOSSAUROS ============================== */
+function buildDino(spec){
+  const g = new THREE.Group();
+  const bodyMat = new THREE.MeshLambertMaterial({ color: spec.color });
+  const darkMat = new THREE.MeshLambertMaterial({ color: spec.dark });
+  const bellyMat = new THREE.MeshLambertMaterial({ color: spec.belly });
+  const eyeWhite = new THREE.MeshLambertMaterial({ color: 0xffffff });
+  const eyeBlack = new THREE.MeshBasicMaterial({ color: 0x111111 });
+
+  const hipY = spec.legLen;
+  const bodyY = hipY + spec.bodyH / 2;
+
+  const body = makeBlob(spec.bodyW / 2, spec.bodyH / 2, spec.bodyLen / 2, bodyMat, 14);
+  body.position.y = bodyY; g.add(body);
+
+  const belly = makeBlob(spec.bodyW * 0.37, spec.bodyH * 0.24, spec.bodyLen * 0.38, bellyMat, 10);
+  belly.position.set(0, bodyY - spec.bodyH * 0.22, spec.bodyLen * 0.02); g.add(belly);
+
+  /* pescoço + cabeça (na frente do corpo) */
+  const neckPivot = new THREE.Group();
+  neckPivot.position.set(0, bodyY + spec.bodyH * 0.3, spec.bodyLen / 2);
+  g.add(neckPivot);
+  const neck = makeCapsule(spec.bodyW * 0.26, spec.neckLen, bodyMat, 10);
+  neck.rotation.x = Math.PI / 2;
+  neck.position.set(0, spec.neckLen * 0.2, spec.neckLen / 2);
+  neckPivot.add(neck);
+  const head = makeBlob(spec.headSize * 0.44, spec.headSize * 0.4, spec.headSize * 0.5, bodyMat, 12);
+  head.position.set(0, spec.neckLen * 0.4, spec.neckLen + spec.headSize * 0.35); neckPivot.add(head);
+  const snout = makeBlob(spec.headSize * 0.3, spec.headSize * 0.24, spec.headSize * 0.34, bodyMat, 10);
+  snout.position.set(0, spec.neckLen * 0.25, spec.neckLen + spec.headSize * 0.75); neckPivot.add(snout);
+  for (const sx of [-spec.headSize * 0.3, spec.headSize * 0.3]){
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(spec.headSize * 0.15, 10, 8), eyeWhite);
+    eye.position.set(sx, spec.neckLen * 0.48, spec.neckLen + spec.headSize * 0.52); neckPivot.add(eye);
+    const pupil = new THREE.Mesh(new THREE.SphereGeometry(spec.headSize * 0.07, 8, 6), eyeBlack);
+    pupil.position.set(sx, spec.neckLen * 0.48, spec.neckLen + spec.headSize * 0.64); neckPivot.add(pupil);
+  }
+
+  /* cauda (atrás do corpo, em contas arredondadas que afinam) */
+  const tailPivot = new THREE.Group();
+  tailPivot.position.set(0, bodyY, -spec.bodyLen / 2);
+  g.add(tailPivot);
+  const tailSegs = 2;
+  const tailR0 = spec.bodyW * 0.33;
+  let tzCursor = 0, rCursor = tailR0;
+  for (let i = 0; i < tailSegs; i++){
+    const segLen = spec.tailLen / tailSegs;
+    const rNext = tailR0 * (1 - ((i + 1) / tailSegs) * 0.78);
+    const seg = new THREE.Mesh(new THREE.CylinderGeometry(rCursor, rNext, segLen, 10), bodyMat);
+    seg.rotation.x = Math.PI / 2;
+    seg.position.set(0, -i * spec.bodyH * 0.05, tzCursor - segLen / 2);
+    tailPivot.add(seg);
+    tzCursor -= segLen;
+    rCursor = rNext;
+  }
+  const tailTip = new THREE.Mesh(new THREE.SphereGeometry(rCursor, 8, 6), bodyMat);
+  tailTip.position.set(0, -tailSegs * spec.bodyH * 0.05, tzCursor);
+  tailPivot.add(tailTip);
+
+  /* pernas */
+  const legPivots = [];
+  function makeLeg(x, z, thick, len){
+    const pivot = new THREE.Group();
+    pivot.position.set(x, hipY, z);
+    g.add(pivot);
+    const leg = makeCapsule(thick * 0.5, len * 0.9, darkMat, 8);
+    leg.position.y = -len / 2;
+    pivot.add(leg);
+    const foot = makeBlob(thick * 0.62, thick * 0.36, thick * 0.78, darkMat, 8);
+    foot.position.set(0, -len - thick * 0.1, thick * 0.28);
+    pivot.add(foot);
+    legPivots.push(pivot);
+    return pivot;
+  }
+  if (spec.stance === 'biped'){
+    makeLeg(-spec.bodyW * 0.28, 0.1, spec.legThick, spec.legLen);
+    makeLeg( spec.bodyW * 0.28, 0.1, spec.legThick, spec.legLen);
+    /* bracinhos pequenos */
+    if (spec.armSize > 0){
+      for (const sx of [-spec.bodyW * 0.42, spec.bodyW * 0.42]){
+        const arm = makeCapsule(spec.armSize * 0.55, spec.armSize * 1.7, darkMat, 8);
+        arm.rotation.x = Math.PI / 2.4;
+        arm.position.set(sx, bodyY + spec.bodyH * 0.1, spec.bodyLen * 0.3);
+        g.add(arm);
+      }
+    }
+  } else {
+    makeLeg(-spec.bodyW * 0.38, spec.bodyLen * 0.3, spec.legThick, spec.legLen);
+    makeLeg( spec.bodyW * 0.38, spec.bodyLen * 0.3, spec.legThick, spec.legLen);
+    makeLeg(-spec.bodyW * 0.38, -spec.bodyLen * 0.3, spec.legThick, spec.legLen);
+    makeLeg( spec.bodyW * 0.38, -spec.bodyLen * 0.3, spec.legThick, spec.legLen);
+  }
+
+  /* características especiais */
+  for (const feat of spec.features){
+    if (feat === 'frill'){
+      const frill = new THREE.Mesh(new THREE.CylinderGeometry(spec.headSize * 0.75, spec.headSize * 0.9, 0.18, 16, 1, false, 0, Math.PI),
+        darkMat);
+      frill.rotation.x = Math.PI / 2; frill.rotation.z = Math.PI;
+      frill.position.set(0, bodyY + spec.bodyH * 0.5, spec.bodyLen / 2 + 0.1);
+      g.add(frill);
+    }
+    if (feat === 'horns'){
+      const hornMat = new THREE.MeshLambertMaterial({ color: 0xe8e0c8 });
+      for (const [sx, sz] of [[-spec.headSize * 0.3, 1], [spec.headSize * 0.3, 1]]){
+        const horn = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.5, 9), hornMat);
+        horn.position.set(sx, bodyY + spec.bodyH * 0.55, spec.bodyLen / 2 + spec.neckLen * sz * 0.6);
+        horn.rotation.x = -0.4;
+        g.add(horn);
+        const tip = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 6), hornMat);
+        tip.position.set(sx, bodyY + spec.bodyH * 0.55 + 0.27, spec.bodyLen / 2 + spec.neckLen * sz * 0.6 + 0.1);
+        g.add(tip);
+      }
+      const noseHorn = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.28, 8), hornMat);
+      noseHorn.position.set(0, bodyY + spec.bodyH * 0.1, spec.bodyLen / 2 + spec.neckLen + spec.headSize * 0.7);
+      noseHorn.rotation.x = -0.9;
+      g.add(noseHorn);
+    }
+    if (feat === 'plates'){
+      for (let i = 0; i < 6; i++){
+        const t = i / 5;
+        const plate = makeBlob(0.07, 0.32, 0.26, darkMat, 8);
+        plate.position.set(0, bodyY + spec.bodyH * 0.55, spec.bodyLen / 2 - t * (spec.bodyLen + spec.tailLen * 0.7));
+        plate.rotation.z = 0.1;
+        g.add(plate);
+      }
+    }
+    if (feat === 'club'){
+      const club = new THREE.Mesh(new THREE.SphereGeometry(spec.bodyW * 0.3, 12, 10), darkMat);
+      club.position.set(0, bodyY * 0.55, -spec.bodyLen / 2 - spec.tailLen - 0.1);
+      g.add(club);
+    }
+    if (feat === 'armorplates'){
+      for (let i = 0; i < 5; i++){
+        const t = i / 4;
+        for (const sx of [-spec.bodyW * 0.26, 0, spec.bodyW * 0.26]){
+          const bump = makeBlob(0.15, 0.1, 0.16, darkMat, 8);
+          bump.position.set(sx, bodyY + spec.bodyH * 0.44, spec.bodyLen * 0.35 - t * spec.bodyLen * 0.8);
+          g.add(bump);
+        }
+      }
+    }
+    if (feat === 'crest'){
+      const crestGroup = new THREE.Group();
+      crestGroup.position.set(0, spec.neckLen * 0.75, spec.neckLen + spec.headSize * 0.3);
+      neckPivot.add(crestGroup);
+      const crest = new THREE.Mesh(new THREE.ConeGeometry(0.11, 0.26, 8), darkMat);
+      crestGroup.add(crest);
+      const crestTip = new THREE.Mesh(new THREE.SphereGeometry(0.06, 6, 6), darkMat);
+      crestTip.position.y = 0.13;
+      crestGroup.add(crestTip);
+    }
+  }
+
+  g.rotation.y = Math.PI; // cabeça/frente do modelo é construída em +Z; gira 180° para encarar -Z (rumo à corrida)
+  g.scale.setScalar(spec.hbScale);
+  g.userData.legPivots = legPivots;
+  g.userData.tailPivot = tailPivot;
+  g.userData.neckPivot = neckPivot;
+  g.userData.stanceHeight = (hipY + spec.bodyH) * spec.hbScale;
+  return g;
+}
+
+/* ============================== MODELOS: CENÁRIO E OBSTÁCULOS ============================== */
+function makeBoulder(scale){
+  scale = scale || 1;
+  const g = new THREE.Group();
+  const mat = new THREE.MeshLambertMaterial({ color: 0x6b6458 });
+  const mat2 = new THREE.MeshLambertMaterial({ color: 0x847b6b });
+  const rocks = [
+    { r: 0.5,  y: 0.42, x: 0,     z: 0,     m: mat },
+    { r: 0.3,  y: 0.26, x: 0.42,  z: 0.14,  m: mat2 },
+    { r: 0.2,  y: 0.18, x: -0.28, z: -0.2,  m: mat },
+  ];
+  for (const r of rocks){
+    const b = makeBlob(r.r * scale, r.r * 0.86 * scale, r.r * 0.92 * scale, r.m, 9);
+    b.position.set(r.x * scale, r.y * scale, r.z * scale);
+    g.add(b);
+  }
+  return g;
+}
+function makeRock(){
+  const g = makeBoulder(1);
+  g.userData.halfLen = 0.62;
+  return g;
+}
+function makeLogObstacle(){
+  const g = new THREE.Group();
+  const wood = new THREE.MeshLambertMaterial({ color: 0x6b4a2a });
+  const log = makeCapsule(0.32, 1.3, wood, 12);
+  log.rotation.z = Math.PI / 2; log.position.y = 0.32; g.add(log);
+  g.userData.halfLen = 0.42;
+  return g;
+}
+function makeFernClump(){
+  const g = new THREE.Group();
+  const leaf = new THREE.MeshLambertMaterial({ color: 0x2e6b2e });
+  const trunk = new THREE.MeshLambertMaterial({ color: 0x4a3a22 });
+  const stem = makeCapsule(0.09, 0.36, trunk, 8);
+  stem.position.y = 0.23; g.add(stem);
+  for (let i = 0; i < 5; i++){
+    const ang = i * 1.26;
+    const frond = new THREE.Group();
+    frond.position.set(Math.cos(ang) * 0.2, 0.72, Math.sin(ang) * 0.2);
+    frond.rotation.z = Math.cos(i) * 0.3;
+    const c = new THREE.Mesh(new THREE.ConeGeometry(0.38, 0.85, 9), leaf);
+    frond.add(c);
+    const tip = new THREE.Mesh(new THREE.SphereGeometry(0.09, 7, 6), leaf);
+    tip.position.y = 0.42;
+    frond.add(tip);
+    g.add(frond);
+  }
+  g.userData.halfLen = 0.5;
+  return g;
+}
+const GROUND_VARIANTS = [makeRock, makeLogObstacle, makeFernClump];
+
+function makeHole(len){
+  const g = new THREE.Group();
+  const pit = new THREE.Mesh(new THREE.CircleGeometry(0.75, 22), new THREE.MeshLambertMaterial({ color: 0x140806 }));
+  pit.rotation.x = -Math.PI / 2; pit.scale.set(1, len / 1.5, 1); pit.position.y = 0.02; g.add(pit);
+  const glow = new THREE.Mesh(new THREE.CircleGeometry(0.88, 22), new THREE.MeshBasicMaterial({ color: 0x7a2a10, transparent:true, opacity:0.55 }));
+  glow.rotation.x = -Math.PI / 2; glow.scale.set(1, (len + 0.2) / 1.76, 1); glow.position.y = 0.015; g.add(glow);
+  g.userData.halfLen = len / 2;
+  return g;
+}
+
+function makePterodactyl(){
+  const g = new THREE.Group();
+  const skin = new THREE.MeshLambertMaterial({ color: 0x8a8272 });
+  const skinLight = new THREE.MeshLambertMaterial({ color: 0xb0a890 });
+  const dark = new THREE.MeshLambertMaterial({ color: 0x5a5448 });
+  const eyeWhite = new THREE.MeshLambertMaterial({ color: 0xffffff });
+  const eyeBlack = new THREE.MeshBasicMaterial({ color: 0x111111 });
+
+  const body = makeBlob(0.24, 0.22, 0.34, skin, 12);
+  g.add(body);
+  const head = makeBlob(0.16, 0.15, 0.2, skinLight, 10);
+  head.position.set(0.36, 0.07, 0); g.add(head);
+  const beak = makeBlob(0.05, 0.045, 0.24, dark, 8);
+  beak.position.set(0.58, 0.03, 0); g.add(beak);
+  const crest = makeBlob(0.04, 0.16, 0.06, dark, 8);
+  crest.position.set(0.3, 0.25, 0); crest.rotation.z = -0.3; g.add(crest);
+  for (const sx of [-0.08, 0.08]){
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.055, 8, 6), eyeWhite);
+    eye.position.set(0.42, 0.13, sx); g.add(eye);
+    const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.026, 6, 6), eyeBlack);
+    pupil.position.set(0.46, 0.13, sx); g.add(pupil);
+  }
+  const tail = makeBlob(0.06, 0.06, 0.32, skin, 8);
+  tail.position.set(-0.42, 0, 0); g.add(tail);
+  const tailFin = makeBlob(0.03, 0.14, 0.1, dark, 8);
+  tailFin.position.set(-0.7, 0, 0); g.add(tailFin);
+
+  const wings = new THREE.Group();
+  const wingMat = new THREE.MeshLambertMaterial({ color: 0x746a58 });
+  for (const side of [-1, 1]){
+    const inner = makeBlob(0.55, 0.05, 0.22, wingMat, 10);
+    inner.position.set(side * 0.55, 0.05, 0);
+    inner.rotation.z = side * 0.12;
+    wings.add(inner);
+    const outer = makeBlob(0.5, 0.04, 0.14, wingMat, 10);
+    outer.position.set(side * 1.15, -0.02, 0);
+    outer.rotation.z = side * 0.32;
+    wings.add(outer);
+  }
+  wings.position.y = 0.1;
+  g.add(wings);
+
+  g.userData.wings = wings;
+  g.userData.halfLen = 0.75;
+  return g;
+}
+
+function makeEgg(){
+  const g = new THREE.Group();
+  const shell = new THREE.MeshLambertMaterial({ color: 0xf2e6b8, emissive: 0x33280a, emissiveIntensity:0.3 });
+  const spot = new THREE.MeshLambertMaterial({ color: 0x9a7a3a });
+  const egg = new THREE.Mesh(new THREE.SphereGeometry(0.3, 14, 12), shell);
+  egg.scale.set(0.85, 1.1, 0.85);
+  g.add(egg);
+  for (let i = 0; i < 4; i++){
+    const s = new THREE.Mesh(new THREE.SphereGeometry(0.045, 5, 5), spot);
+    s.position.set((Math.random()-0.5)*0.35, (Math.random()-0.5)*0.5, (Math.random()-0.5)*0.2 + 0.2);
+    g.add(s);
+  }
+  g.userData.halfLen = 0.3;
+  return g;
+}
+
+function makeAncientTree(){
+  const g = new THREE.Group();
+  const trunkMat = new THREE.MeshLambertMaterial({ color: 0x5a4428 });
+  const leafMat = new THREE.MeshLambertMaterial({ color: 0x2e6b2e });
+  const leafMat2 = new THREE.MeshLambertMaterial({ color: 0x3f8a3f });
+  const trunkH = 2.0 + Math.random() * 0.9;
+  const trunk = makeCapsule(0.24, trunkH * 0.86, trunkMat, 10);
+  trunk.position.y = trunkH / 2;
+  g.add(trunk);
+  const crownY = trunkH;
+  const frondCount = 7;
+  for (let i = 0; i < frondCount; i++){
+    const ang = (i / frondCount) * Math.PI * 2;
+    const frond = new THREE.Group();
+    frond.position.set(Math.cos(ang) * 0.5, crownY + 0.55, Math.sin(ang) * 0.5);
+    frond.rotation.x = 1.15;
+    frond.rotation.y = ang;
+    const mat = i % 2 ? leafMat : leafMat2;
+    const cone = new THREE.Mesh(new THREE.ConeGeometry(0.22, 1.8, 8), mat);
+    frond.add(cone);
+    const tip = new THREE.Mesh(new THREE.SphereGeometry(0.12, 7, 6), mat);
+    tip.position.y = 0.9;
+    frond.add(tip);
+    g.add(frond);
+  }
+  const bud = new THREE.Mesh(new THREE.SphereGeometry(0.34, 10, 10), leafMat2);
+  bud.position.y = crownY + 0.2;
+  g.add(bud);
+  return g;
+}
+
+function makeDecor(kind){
+  if (kind === 'tree') return makeAncientTree();
+  if (kind === 'fern') return makeFernClump();
+  const rock = makeBoulder(1.1 + Math.random() * 0.5);
+  rock.rotation.y = Math.random() * Math.PI * 2;
+  return rock;
+}
+
+function enableShadows(obj, cast, receive){
+  obj.traverse(o => {
+    if (o.isMesh){
+      if (cast) o.castShadow = true;
+      if (receive) o.receiveShadow = true;
+    }
+  });
+}
+
+/* ============================== VULCÃO EM ERUPÇÃO ============================== */
+let volcanoGroup = null;
+function buildVolcano(){
+  const g = new THREE.Group();
+  const volcano = new THREE.Mesh(new THREE.ConeGeometry(16, 22, 10), new THREE.MeshLambertMaterial({ color: 0x3a2f28 }));
+  g.add(volcano);
+
+  const crater = new THREE.Mesh(new THREE.CircleGeometry(2.4, 12), new THREE.MeshBasicMaterial({ color: 0xff5a1a }));
+  crater.rotation.x = -Math.PI / 2; crater.position.y = 11.05;
+  g.add(crater);
+  const glow = new THREE.Mesh(new THREE.CircleGeometry(4.4, 14), new THREE.MeshBasicMaterial({ color: 0xff8a3a, transparent: true, opacity: 0.35 }));
+  glow.rotation.x = -Math.PI / 2; glow.position.y = 11.1;
+  g.add(glow);
+
+  /* fluxo de lava escorrendo pela encosta */
+  const lavaFlow = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 12), new THREE.MeshBasicMaterial({ color: 0xff6a20, transparent: true, opacity: 0.85, side: THREE.DoubleSide }));
+  lavaFlow.position.set(3.4, 5.5, 1.3);
+  lavaFlow.rotation.y = 0.35; lavaFlow.rotation.x = -0.3;
+  g.add(lavaFlow);
+
+  /* pluma de fumaça: esferas translúcidas que sobem e reiniciam */
+  const smokePuffs = [];
+  for (let i = 0; i < 7; i++){
+    const mat = new THREE.MeshBasicMaterial({ color: 0x57534c, transparent: true, opacity: 0.4 });
+    const puff = new THREE.Mesh(new THREE.SphereGeometry(1.5 + Math.random() * 1.3, 7, 7), mat);
+    const startY = 11.5 + i * 2.3;
+    puff.position.set((Math.random() - 0.5) * 1.6, startY, (Math.random() - 0.5) * 1.6);
+    puff.userData.startY = 11.5;
+    puff.userData.baseOpacity = 0.42 - i * 0.03;
+    const life = (startY - puff.userData.startY) / 16;
+    mat.opacity = puff.userData.baseOpacity * Math.max(0, 1 - life);
+    g.add(puff);
+    smokePuffs.push(puff);
+  }
+  g.userData.smokePuffs = smokePuffs;
+  g.userData.crater = crater;
+  g.userData.glow = glow;
+  g.position.set(22, 8, -95);
+  return g;
+}
+function updateVolcano(dt, t){
+  const v = volcanoGroup;
+  if (!v) return;
+  v.userData.glow.material.opacity = 0.3 + Math.sin(t * 2.4) * 0.08;
+  v.userData.crater.material.color.setHSL(0.055, 1, 0.52 + Math.sin(t * 3.1) * 0.07);
+  for (const p of v.userData.smokePuffs){
+    p.position.y += dt * 0.9;
+    p.rotation.y += dt * 0.15;
+    const life = (p.position.y - p.userData.startY) / 16;
+    p.material.opacity = p.userData.baseOpacity * Math.max(0, 1 - life);
+    if (life >= 1){
+      p.position.y = p.userData.startY;
+      p.position.x = (Math.random() - 0.5) * 1.6;
+      p.position.z = (Math.random() - 0.5) * 1.6;
+    }
+  }
+}
+
+/* ============================== CENA ============================== */
+function buildWorld(){
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x8fc4d8);
+  scene.fog = new THREE.Fog(0x9ecfdf, 45, 105);
+
+  camera = new THREE.PerspectiveCamera(55, innerWidth/innerHeight, 0.1, 300);
+
+  renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('c'), antialias: true });
+  renderer.setSize(innerWidth, innerHeight);
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x4a6a2a, 1.1));
+  const dir = new THREE.DirectionalLight(0xfff2c8, 0.95);
+  dir.position.set(-20, 40, 15);
+  dir.castShadow = true;
+  dir.shadow.mapSize.set(1024, 1024);
+  dir.shadow.camera.left = -22; dir.shadow.camera.right = 22;
+  dir.shadow.camera.top = 22; dir.shadow.camera.bottom = -22;
+  dir.shadow.camera.near = 1; dir.shadow.camera.far = 100;
+  dir.shadow.bias = -0.0015;
+  dir.target.position.set(0, 0, -12);
+  scene.add(dir.target);
+  scene.add(dir);
+
+  /* sol */
+  const sun = new THREE.Mesh(new THREE.CircleGeometry(6, 20), new THREE.MeshBasicMaterial({ color: 0xffdf9a }));
+  sun.position.set(-18, 26, -95);
+  scene.add(sun);
+
+  /* vulcão em erupção, ao fundo */
+  volcanoGroup = buildVolcano();
+  scene.add(volcanoGroup);
+
+  /* chão: trilha central + grama lateral */
+  const path = new THREE.Mesh(new THREE.PlaneGeometry(5, 400), new THREE.MeshLambertMaterial({ color: 0x8a6a42 }));
+  path.rotation.x = -Math.PI/2; path.position.set(0, 0, -150);
+  path.receiveShadow = true;
+  scene.add(path);
+  const grassL = new THREE.Mesh(new THREE.PlaneGeometry(30, 400), new THREE.MeshLambertMaterial({ color: 0x2e5a2e }));
+  grassL.rotation.x = -Math.PI/2; grassL.position.set(-17.5, -0.02, -150);
+  grassL.receiveShadow = true;
+  scene.add(grassL);
+  const grassR = grassL.clone();
+  grassR.position.x = 17.5;
+  scene.add(grassR);
+
+  /* divisórias tracejadas das 3 faixas (recicladas p/ sensação de velocidade) */
+  const dashMat = new THREE.MeshLambertMaterial({ color: 0xd8c8a0 });
+  for (let i = 0; i < 24; i++){
+    for (const dx of [-0.85, 0.85]){
+      const d = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.02, 1.4), dashMat);
+      d.position.set(dx, 0.011, -i * 3.6);
+      scene.add(d);
+      groundStripes.push(d);
+    }
+  }
+
+  dinoMesh = buildDino(sp);
+  enableShadows(dinoMesh, true, false);
+  scene.add(dinoMesh);
+
+  updateCamera();
+}
+
+function updateCamera(){
+  camera.position.set(0, 4.6, 9.5);
+  camera.lookAt(0, 1.3, -14);
+}
+
+/* ============================== ITENS EM MOVIMENTO ============================== */
+function spawnHazard(lane){
+  const kinds = ['ground', 'hole', 'aerial'];
+  const kind = kinds[(Math.random() * kinds.length) | 0];
+  let mesh, len, y = 0;
+  if (kind === 'ground'){
+    const builder = GROUND_VARIANTS[(Math.random() * GROUND_VARIANTS.length) | 0];
+    mesh = builder();
+    len = mesh.userData.halfLen * 2;
+  } else if (kind === 'hole'){
+    len = 2.2 + Math.random() * 2.0;
+    mesh = makeHole(len);
+  } else {
+    mesh = makePterodactyl();
+    len = mesh.userData.halfLen * 2;
+    y = 1.85;
+  }
+  mesh.position.set(LANE_X[lane], y, SPAWN_Z);
+  if (kind !== 'hole') enableShadows(mesh, true, false);
+  scene.add(mesh);
+  movers.push({ type: kind, mesh, lane, z: SPAWN_Z, len, handled: false, done: false, y });
+}
+function spawnEgg(lane, air){
+  const mesh = makeEgg();
+  const baseY = air ? EGG_AIR_Y : EGG_GROUND_Y;
+  mesh.position.set(LANE_X[lane], baseY, SPAWN_Z);
+  enableShadows(mesh, true, false);
+  scene.add(mesh);
+  movers.push({ type: 'egg', mesh, lane, air, baseY, z: SPAWN_Z, len: 0.6, collected: false, done: false });
+}
+/* cada slot da pista gera uma "onda": obstáculos em 1-2 faixas, ovos nas livres */
+function spawnWave(){
+  const lanes = [0, 1, 2].sort(() => Math.random() - 0.5);
+  const r = Math.random();
+  if (r < 0.16){
+    spawnEgg(lanes[0], Math.random() < 0.45);
+    if (Math.random() < 0.4) spawnEgg(lanes[1], Math.random() < 0.45);
+    return;
+  }
+  const nHaz = r < 0.62 ? 1 : 2;
+  for (let i = 0; i < nHaz; i++) spawnHazard(lanes[i]);
+  if (Math.random() < 0.45) spawnEgg(lanes[2], Math.random() < 0.45);
+}
+function spawnDecor(){
+  const side = Math.random() < 0.5 ? -1 : 1;
+  const r = Math.random();
+  const kind = r < 0.4 ? 'tree' : (r < 0.75 ? 'fern' : 'rock');
+  const mesh = makeDecor(kind);
+  const x = side * (6 + Math.random() * 9);
+  mesh.position.set(x, 0, SPAWN_Z - Math.random() * 10);
+  enableShadows(mesh, true, false);
+  scene.add(mesh);
+  movers.push({ type: 'decor', mesh, z: mesh.position.z, len: 0, done: false });
+}
+
+function smashEffect(mover){
+  sndSmash();
+  showMsg('DESTRUÍDO!', 0.8);
+  scene.remove(mover.mesh);
+  mover.done = true;
+  addScore(20);
+}
+
+/* ============================== JOGO ============================== */
+function showMsg(txt, secs){
+  const el = document.getElementById('msg');
+  el.textContent = txt;
+  el.style.opacity = 1;
+  msgTimer = secs || 1.4;
+}
+
+function addScore(n){
+  score += n;
+  if (Math.floor(score) > hiscore){ hiscore = Math.floor(score); store.set(HISCORE_KEY, hiscore); }
+}
+
+function clearMovers(){
+  for (const m of movers) scene.remove(m.mesh);
+  movers = [];
+}
+
+function startJump(){
+  if (state !== 'play' || player.jumping) return;
+  player.ducking = false;
+  player.jumping = true;
+  player.jumpT = 0;
+  player.jumpDur = JUMP_DUR_BASE * sp.jumpT;
+  player.jumpHmax = JUMP_H_BASE * sp.jumpH;
+  sndJump();
+}
+function setDuck(v){
+  if (state !== 'play') return;
+  if (v && player.jumping) return;
+  if (v && !player.ducking) sndDuck();
+  player.ducking = v;
+}
+function moveLane(dir){
+  if (state !== 'play') return;
+  const nl = Math.min(2, Math.max(0, player.lane + dir));
+  if (nl === player.lane) return;
+  player.lane = nl;
+  sndTick();
+}
+
+function resolveHazard(m){
+  if (m.handled) return;
+  const hbTop = (player.ducking ? 0.7 : 1.7) * sp.hbScale;
+  if (m.type === 'ground'){
+    if (player.jumpY >= GROUND_CLEAR) { m.handled = true; return; }
+    m.handled = true;
+    if (sp.perk === 'smashGround'){ smashEffect(m); return; }
+    if (sp.perk === 'armor' && !player.armorUsed){ player.armorUsed = true; useArmor(m); return; }
+    triggerHit('ground', 'Você tropeçou num obstáculo!');
+  } else if (m.type === 'hole'){
+    if (player.jumpY >= HOLE_AIRBORNE_MIN) { m.handled = true; return; }
+    m.handled = true;
+    triggerHit('hole', 'Você caiu num buraco!');
+  } else if (m.type === 'aerial'){
+    const bandBottom = player.jumpY, bandTop = player.jumpY + hbTop;
+    const overlap = bandBottom < AERIAL_BAND[1] && bandTop > AERIAL_BAND[0];
+    if (!overlap){ m.handled = true; return; }
+    m.handled = true;
+    if (sp.perk === 'smashAerial'){ smashEffect(m); return; }
+    if (sp.perk === 'armor' && !player.armorUsed){ player.armorUsed = true; useArmor(m); return; }
+    triggerHit('aerial', 'Um pterodáctilo te derrubou!');
+  }
+}
+function useArmor(m){
+  sndArmor();
+  showMsg('ARMADURA ABSORVEU O IMPACTO!', 1.2);
+  scene.remove(m.mesh);
+  m.done = true;
+  updateArmorHUD();
+}
+
+function triggerHit(kind, msgText){
+  state = 'hit';
+  hitKind = kind;
+  hitTimer = 0.9;
+  document.getElementById('hitMsg').textContent = msgText;
+  sndHit();
+}
+
+function collectEgg(m){
+  m.collected = true;
+  m.done = true;
+  scene.remove(m.mesh);
+  const pts = Math.round(EGG_POINTS * (sp.perk === 'eggBonus' ? 1.2 : 1));
+  addScore(pts);
+  sndEgg();
+  showMsg(`+${pts}`, 0.6);
+}
+
+function updateArmorHUD(){
+  const box = document.getElementById('armorBox');
+  if (sp.perk !== 'armor'){ box.classList.add('hidden'); return; }
+  box.classList.remove('hidden');
+  box.textContent = player.armorUsed ? 'ARMADURA ○' : 'ARMADURA ●';
+}
+
+function resetRun(){
+  score = 0; elapsed = 0; speed = BASE_SPEED * 1;
+  clearMovers();
+  decorTimer = 0;
+  travelDist = 0; nextSlotDist = FIRST_SLOT_GAP;
+  player.jumping = false; player.jumpY = 0; player.ducking = false;
+  player.armorUsed = false; player.invuln = 0;
+  player.lane = 1; player.x = 0;
+  updateArmorHUD();
+  state = 'play';
+}
+
+function continueRun(){
+  clearMovers();
+  nextSlotDist = travelDist + FIRST_SLOT_GAP;
+  player.jumping = false; player.jumpY = 0; player.ducking = false;
+  player.invuln = 1.6;
+  document.getElementById('hitPrompt').classList.add('hidden');
+  state = 'play';
+}
+
+function endRun(){
+  document.getElementById('hitPrompt').classList.add('hidden');
+  state = 'over';
+  document.getElementById('overMsg').innerHTML =
+    `Você fez <b>${Math.floor(score)}</b> pontos correndo com o <b>${sp.label}</b>.`;
+  document.getElementById('overRecord').textContent =
+    (score >= hiscore && score > 0 ? '★ NOVO RECORDE! ' : '') + `RECORDE ${hiscore}`;
+  document.getElementById('over').classList.remove('hidden');
+}
+
+/* ============================== SELEÇÃO DE DINOSSAURO ============================== */
+function buildDinoGrid(){
+  const grid = document.getElementById('dinoGrid');
+  grid.innerHTML = '';
+  for (const key of SPECIES_ORDER){
+    const s = SPECIES[key];
+    const card = document.createElement('div');
+    card.className = 'dinocard' + (key === selected ? ' sel' : '');
+    card.dataset.key = key;
+    const sw = document.createElement('div');
+    sw.className = 'sw';
+    sw.style.background = '#' + s.color.toString(16).padStart(6, '0');
+    const b = document.createElement('b'); b.textContent = s.name;
+    const span = document.createElement('span'); span.textContent = s.label;
+    card.appendChild(sw); card.appendChild(b); card.appendChild(span);
+    card.addEventListener('click', () => selectSpecies(key));
+    grid.appendChild(card);
+  }
+  updateDinoDesc();
+}
+function selectSpecies(key){
+  selected = key;
+  sp = SPECIES[key];
+  document.querySelectorAll('.dinocard').forEach(c => c.classList.toggle('sel', c.dataset.key === key));
+  updateDinoDesc();
+  setPreviewDino(sp);
+}
+function updateDinoDesc(){
+  document.getElementById('dinoDesc').textContent = sp.desc;
+}
+
+/* ============================== PREVIEW GIRATÓRIO (tela de seleção) ============================== */
+let pvScene, pvCamera, pvRenderer, pvMesh;
+function initPreview(){
+  const cv = document.getElementById('dinoPreview');
+  pvScene = new THREE.Scene();
+  pvCamera = new THREE.PerspectiveCamera(45, 1, 0.1, 50);
+  pvRenderer = new THREE.WebGLRenderer({ canvas: cv, antialias: true, alpha: true });
+  pvScene.add(new THREE.HemisphereLight(0xffffff, 0x30401a, 1.15));
+  const d = new THREE.DirectionalLight(0xfff2c8, 0.9);
+  d.position.set(-3, 5, 4);
+  pvScene.add(d);
+  resizePreview();
+  setPreviewDino(sp);
+}
+function resizePreview(){
+  const cv = document.getElementById('dinoPreview');
+  const w = cv.clientWidth, h = cv.clientHeight;
+  if (!w || !h) return;
+  pvRenderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  pvRenderer.setSize(w, h, false);
+  pvCamera.aspect = w / h;
+  pvCamera.position.set(4.2, 2.6, -8.6);
+  pvCamera.lookAt(0, 1.15, 0);
+  pvCamera.updateProjectionMatrix();
+}
+function setPreviewDino(spec){
+  if (pvMesh) pvScene.remove(pvMesh);
+  pvMesh = buildDino(spec);
+  pvScene.add(pvMesh);
+}
+
+/* ============================== INPUT ============================== */
+addEventListener('keydown', e => {
+  const k = e.key.toLowerCase();
+  if (k.startsWith('arrow') || k === ' ') e.preventDefault();
+  if (k === 'p' && (state === 'play' || state === 'pause')){ togglePause(); return; }
+  if (k === 'arrowdown' || k === 's'){ setDuck(true); return; }
+  if (e.repeat) return;
+  if (k === 'arrowleft' || k === 'a'){ moveLane(-1); return; }
+  if (k === 'arrowright' || k === 'd'){ moveLane(1); return; }
+  if (k === 'arrowup' || k === 'w' || k === ' ') startJump();
+});
+addEventListener('keyup', e => {
+  const k = e.key.toLowerCase();
+  if (k === 'arrowdown' || k === 's') setDuck(false);
+});
+
+document.getElementById('btnJump').addEventListener('pointerdown', e => { e.preventDefault(); startJump(); });
+document.getElementById('btnLeft').addEventListener('pointerdown', e => { e.preventDefault(); moveLane(-1); });
+document.getElementById('btnRight').addEventListener('pointerdown', e => { e.preventDefault(); moveLane(1); });
+document.getElementById('btnDuck').addEventListener('pointerdown', e => { e.preventDefault(); setDuck(true); });
+document.getElementById('btnDuck').addEventListener('pointerup', e => { e.preventDefault(); setDuck(false); });
+document.getElementById('btnDuck').addEventListener('pointercancel', () => setDuck(false));
+/* toque longo nos botões não deve abrir o menu de seleção do sistema */
+document.querySelectorAll('#touch button').forEach(b =>
+  b.addEventListener('contextmenu', e => e.preventDefault()));
+document.getElementById('c').addEventListener('pointerdown', () => { if (state === 'play') startJump(); });
+
+function togglePause(){
+  if (state === 'play'){ state = 'pause'; document.getElementById('pause').classList.remove('hidden'); }
+  else if (state === 'pause'){ state = 'play'; document.getElementById('pause').classList.add('hidden'); }
+}
+document.getElementById('resumeBtn').onclick = togglePause;
+document.getElementById('startBtn').onclick = () => {
+  initAudio(); if (AC && AC.state === 'suspended') AC.resume();
+  document.getElementById('menu').classList.add('hidden');
+  scene.remove(dinoMesh);
+  dinoMesh = buildDino(sp);
+  enableShadows(dinoMesh, true, false);
+  scene.add(dinoMesh);
+  document.getElementById('dinoLbl').textContent = sp.name;
+  resetRun();
+};
+document.getElementById('continueBtn').onclick = continueRun;
+document.getElementById('stopBtn').onclick = endRun;
+document.getElementById('restartBtn').onclick = () => {
+  document.getElementById('over').classList.add('hidden');
+  buildDinoGrid();
+  document.getElementById('menuRecord').textContent = hiscore > 0 ? `RECORDE ${hiscore}` : '';
+  document.getElementById('menu').classList.remove('hidden');
+  state = 'menu';
+};
+addEventListener('resize', () => {
+  camera.aspect = innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+  updateCamera();
+  resizePreview();
+});
+
+/* ============================== LOOP ============================== */
+function updateHUD(){
+  document.getElementById('scoreLbl').textContent = `PONTOS ${Math.floor(score)}`;
+  document.getElementById('hiLbl').textContent = `RECORDE ${hiscore}`;
+}
+
+function animateDino(dt, running){
+  const legs = dinoMesh.userData.legPivots;
+  const cycle = elapsed * speed * 1.7;
+  if (running && !player.jumping){
+    legs.forEach((p, i) => { p.rotation.x = Math.sin(cycle + i * Math.PI) * 0.55; });
+  } else if (player.jumping){
+    legs.forEach(p => { p.rotation.x += (-0.3 - p.rotation.x) * Math.min(1, dt * 8); });
+  }
+  dinoMesh.userData.tailPivot.rotation.y = Math.sin(cycle * 0.6) * 0.25;
+  dinoMesh.userData.neckPivot.rotation.x = player.ducking ? 0.5 : Math.sin(cycle * 0.5) * 0.06;
+
+  const duckOffset = player.ducking ? -0.45 * sp.hbScale : 0;
+  dinoMesh.position.y = player.jumpY + duckOffset;
+  dinoMesh.position.x = player.x;
+  dinoMesh.scale.y = (player.ducking ? 0.62 : 1) * sp.hbScale;
+  dinoMesh.rotation.x = player.jumping ? -0.15 : 0;
+  if (running) dinoMesh.rotation.z = (player.x - LANE_X[player.lane]) * 0.3; /* inclina na troca de faixa */
+  if (player.invuln > 0){
+    dinoMesh.visible = Math.floor(elapsed * 14) % 2 === 0;
+  } else {
+    dinoMesh.visible = true;
+  }
+}
+
+function update(dt){
+  elapsed += dt;
+  speed = Math.min(MAX_SPEED, BASE_SPEED * sp.speed + elapsed * ACCEL);
+  if (player.invuln > 0) player.invuln = Math.max(0, player.invuln - dt);
+
+  score += speed * dt * SCORE_RATE * 0.1;
+  if (Math.floor(score) > hiscore){ hiscore = Math.floor(score); store.set(HISCORE_KEY, hiscore); }
+
+  /* pulo */
+  if (player.jumping){
+    player.jumpT += dt;
+    const t = Math.min(1, player.jumpT / player.jumpDur);
+    player.jumpY = player.jumpHmax * 4 * t * (1 - t);
+    if (t >= 1){ player.jumping = false; player.jumpY = 0; }
+  }
+
+  /* movimento lateral entre faixas */
+  player.x += (LANE_X[player.lane] - player.x) * Math.min(1, dt * LANE_LERP);
+
+  /* spawns em slots fixos ao longo da pista */
+  travelDist += speed * dt;
+  if (travelDist >= nextSlotDist){
+    spawnWave();
+    nextSlotDist += SLOT_SPACING;
+  }
+  decorTimer -= dt;
+  if (decorTimer <= 0){ spawnDecor(); decorTimer = 0.35 + Math.random() * 0.4; }
+
+  /* faixas do chão */
+  for (const d of groundStripes){
+    d.position.z += speed * dt;
+    if (d.position.z > 8) d.position.z -= 24 * 3.6;
+  }
+
+  /* movers */
+  const collideZ = COLLIDE_Z_BASE * sp.hbScale;
+  for (const m of movers){
+    m.z += speed * dt;
+    m.mesh.position.z = m.z;
+    if (m.type === 'aerial'){
+      m.mesh.userData.wings.rotation.z = Math.sin(elapsed * 12) * 0.5;
+      m.mesh.position.y = m.y + Math.sin(elapsed * 3 + m.z) * 0.15;
+    }
+    if (m.type === 'egg'){
+      m.mesh.rotation.y += dt * 1.5;
+      m.mesh.position.y = m.baseY + Math.sin(elapsed * 4 + m.z) * 0.08;
+    }
+    if (state === 'play' && player.invuln <= 0 && !m.done && m.lane !== undefined){
+      const xClose = Math.abs(LANE_X[m.lane] - player.x) < LANE_HIT_X;
+      if (m.type === 'egg'){
+        if (!m.collected && xClose && Math.abs(m.z) <= m.len / 2 + 1.0){
+          /* ovo no chão: pega passando; ovo no ar: só pulando */
+          const reachOK = m.air ? player.jumpY >= 0.7 : player.jumpY <= 1.1;
+          if (reachOK) collectEgg(m);
+        }
+      } else {
+        if (xClose && Math.abs(m.z) <= m.len / 2 + collideZ) resolveHazard(m);
+      }
+    }
+    if (m.z > REMOVE_Z){ scene.remove(m.mesh); m.done = true; }
+  }
+  movers = movers.filter(m => !m.done);
+
+  animateDino(dt, true);
+  updateHUD();
+}
+
+function loop(){
+  requestAnimationFrame(loop);
+  const dt = Math.min(0.05, clock.getDelta());
+  ambientT += dt;
+  updateVolcano(dt, ambientT);
+  if (state === 'play') update(dt);
+  else if (state === 'hit'){
+    animateDino(dt, false);
+    dinoMesh.rotation.z += dt * 2.2;
+    dinoMesh.position.y -= dt * (hitKind === 'hole' ? 2.6 : 0.4);
+    hitTimer -= dt;
+    if (hitTimer <= 0){
+      state = 'ask';
+      document.getElementById('hitTitle').textContent = hitKind === 'hole' ? 'CAIU NO BURACO!' : 'BATEU!';
+      document.getElementById('hitRecord').textContent = `PONTOS ${Math.floor(score)} · RECORDE ${hiscore}`;
+      document.getElementById('hitPrompt').classList.remove('hidden');
+      dinoMesh.rotation.z = 0; dinoMesh.position.y = 0;
+    }
+  }
+  if (msgTimer > 0){
+    msgTimer -= dt;
+    if (msgTimer <= 0) document.getElementById('msg').style.opacity = 0;
+  }
+  renderer.render(scene, camera);
+  if (state === 'menu' && pvMesh){
+    pvMesh.rotation.y += dt * 0.7;
+    pvRenderer.render(pvScene, pvCamera);
+  }
+}
+
+buildWorld();
+clock = new THREE.Clock();
+buildDinoGrid();
+initPreview();
+document.getElementById('menuRecord').textContent = hiscore > 0 ? `RECORDE ${hiscore}` : '';
+loop();
+})();
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./service-worker.js');
+  });
+}
+</script>
+</body>
+</html>

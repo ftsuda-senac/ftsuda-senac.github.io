@@ -52,7 +52,8 @@
          padding:10px 14px calc(env(safe-area-inset-bottom, 0px) + 46px);z-index:6;pointer-events:none}
   #touch button{width:78px;height:78px;border-radius:14px;border:2px solid var(--hud-dim);
                 background:var(--panel);color:var(--hud);font-size:28px;font-weight:bold;touch-action:none;
-                pointer-events:auto;user-select:none;-webkit-user-select:none}
+                pointer-events:auto;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;
+                -webkit-tap-highlight-color:transparent}
   #touch .mid{display:flex;gap:12px}
   @media (pointer:coarse){ #touch{display:flex} }
 </style>
@@ -605,6 +606,8 @@ addEventListener('keydown', e => {
 function bindBtn(id, dx, dr){
   const el = document.getElementById(id);
   el.addEventListener('pointerdown', e => { e.preventDefault(); startHop(dx, dr); });
+  /* toque longo não deve abrir o menu de seleção do sistema */
+  el.addEventListener('contextmenu', e => e.preventDefault());
 }
 bindBtn('btnU', 0, 1); bindBtn('btnD', 0, -1); bindBtn('btnL', -1, 0); bindBtn('btnR', 1, 0);
 

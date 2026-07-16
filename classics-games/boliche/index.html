@@ -65,7 +65,9 @@
   #touch{position:fixed;inset:auto 0 0 0;display:none;justify-content:space-between;
          padding:10px 14px calc(env(safe-area-inset-bottom, 0px) + 46px);z-index:6}
   #touch button{width:84px;height:84px;border-radius:14px;border:2px solid var(--hud-dim);
-                background:var(--panel);color:var(--hud);font-size:30px;font-weight:bold;touch-action:none}
+                background:var(--panel);color:var(--hud);font-size:30px;font-weight:bold;touch-action:none;
+                user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;
+                -webkit-tap-highlight-color:transparent}
   @media (pointer:coarse){ #touch{display:flex} }
 </style>
 </head>
@@ -1734,6 +1736,8 @@ function bindTouch(id, prop){
   el.addEventListener('pointerup', off);
   el.addEventListener('pointercancel', off);
   el.addEventListener('pointerleave', off);
+  /* toque longo não deve abrir o menu de seleção do sistema */
+  el.addEventListener('contextmenu', e => e.preventDefault());
 }
 bindTouch('btnL','l'); bindTouch('btnR','r');
 
