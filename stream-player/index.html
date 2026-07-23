@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stream Player — HLS / MPEG-DASH</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.5.13/hls.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dashjs/4.7.4/dash.all.min.js"></script>
+<style>
+  :root {
+    --bg: #101418;
+    --surface: #1a2027;
+    --border: #2b333d;
+    --text: #e6ebf0;
+    --muted: #8a97a5;
+    --accent: #3fb6a8;
+    --accent-hover: #35a094;
+    --error: #e0685f;
+    --ok: #6fbf73;
+    --radius: 8px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2rem 1rem;
+  }
+  main { width: 100%; max-width: 960px; }
+  h1 {
+    font-size: 1.15rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    margin-bottom: 0.25rem;
+  }
+  .subtitle {
+    color: var(--muted);
+    font-size: 0.85rem;
+    margin-bottom: 1.5rem;
+  }
+  form.controls {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+  }
+  input[type="url"] {
+    flex: 1 1 380px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-family: ui-monospace, "Cascadia Code", Menlo, Consolas, monospace;
+    font-size: 0.85rem;
+    padding: 0.65rem 0.85rem;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  input[type="url"]:focus { border-color: var(--accent); }
+  select {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-size: 0.85rem;
+    padding: 0.65rem 0.75rem;
+    outline: none;
+    cursor: pointer;
+  }
+  select:focus { border-color: var(--accent); }
+  button {
+    background: var(--accent);
+    border: none;
+    border-radius: var(--radius);
+    color: #08211e;
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 0.65rem 1.4rem;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  button:hover { background: var(--accent-hover); }
+  button:focus-visible, input:focus-visible, select:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  .player-wrap {
+    background: #000;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    aspect-ratio: 16 / 9;
+  }
+  video { width: 100%; height: 100%; display: block; background: #000; }
+  .status {
+    margin-top: 0.75rem;
+    font-family: ui-monospace, "Cascadia Code", Menlo, Consolas, monospace;
+    font-size: 0.78rem;
+    color: var(--muted);
+    min-height: 1.2em;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+  .status.ok { color: var(--ok); }
+  .status.error { color: var(--error); }
+  .qualities {
+    list-style: none;
+    margin-top: 1rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  .qualities:empty { display: none; }
+  .qualities li button {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: ui-monospace, "Cascadia Code", Menlo, Consolas, monospace;
+    font-size: 0.78rem;
+    font-weight: 400;
+    padding: 0.45rem 0.85rem;
+  }
+  .qualities li button:hover { border-color: var(--accent); background: var(--surface); }
+  .qualities li button.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #08211e;
+    font-weight: 600;
+  }
+  .samples {
+    margin-top: 1.5rem;
+    font-size: 0.78rem;
+    color: var(--muted);
+  }
+  .samples a {
+    color: var(--accent);
+    text-decoration: none;
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    cursor: pointer;
+  }
+  .samples a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Stream Player</h1>
+  <p class="subtitle">Reprodutor de streams HLS (.m3u8) e MPEG-DASH (.mpd)</p>
+
+  <form class="controls" id="form">
+    <input type="url" id="url" placeholder="https://example.com/stream/index.m3u8" required
+           aria-label="URL do stream">
+    <select id="protocol" aria-label="Protocolo">
+      <option value="auto">Auto</option>
+      <option value="hls">HLS</option>
+      <option value="dash">DASH</option>
+    </select>
+    <button type="submit">Reproduzir</button>
+  </form>
+
+  <div class="player-wrap">
+    <video id="video" controls playsinline></video>
+  </div>
+
+  <p class="status" id="status" role="status"></p>
+
+  <ul class="qualities" id="qualities" aria-label="Qualidades disponíveis"></ul>
+
+  <p class="samples">
+    Streams de teste:
+    <a data-url="https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8">HLS (Mux)</a> ·
+    <a data-url="https://dash.akamaized.net/akamai/bbb_30fps/bbb_30fps.mpd">DASH (Akamai BBB)</a>
+  </p>
+</main>
+
+<script>
+(function () {
+  'use strict';
+
+  const video = document.getElementById('video');
+  const form = document.getElementById('form');
+  const urlInput = document.getElementById('url');
+  const protocolSelect = document.getElementById('protocol');
+  const statusEl = document.getElementById('status');
+  const qualitiesEl = document.getElementById('qualities');
+
+  let hlsInstance = null;
+  let dashInstance = null;
+
+  function setStatus(message, kind) {
+    statusEl.textContent = message;
+    statusEl.className = 'status' + (kind ? ' ' + kind : '');
+  }
+
+  function destroyPlayers() {
+    if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
+    if (dashInstance) { dashInstance.reset(); dashInstance = null; }
+    qualitiesEl.innerHTML = '';
+    video.removeAttribute('src');
+    video.load();
+  }
+
+  function formatQuality(width, height, bitrate) {
+    const parts = [];
+    if (height) parts.push(height + 'p');
+    else if (width) parts.push(width + 'w');
+    if (bitrate) parts.push(Math.round(bitrate / 1000) + ' kbps');
+    return parts.length ? parts.join(' · ') : 'Variante';
+  }
+
+  /**
+   * Renderiza a lista de qualidades abaixo do player.
+   * items: [{ label, value }] — value -1 representa "Auto".
+   * onSelect(value) é chamado ao clicar em um item.
+   */
+  function renderQualityList(items, onSelect) {
+    qualitiesEl.innerHTML = '';
+    items.forEach(function (item) {
+      const li = document.createElement('li');
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = item.label;
+      btn.dataset.value = String(item.value);
+      btn.addEventListener('click', function () { onSelect(item.value); });
+      li.appendChild(btn);
+      qualitiesEl.appendChild(li);
+    });
+  }
+
+  function markActiveQuality(value) {
+    qualitiesEl.querySelectorAll('button').forEach(function (btn) {
+      btn.classList.toggle('active', btn.dataset.value === String(value));
+    });
+  }
+
+  function detectProtocol(url) {
+    const path = url.split('?')[0].toLowerCase();
+    if (path.endsWith('.m3u8')) return 'hls';
+    if (path.endsWith('.mpd')) return 'dash';
+    return null;
+  }
+
+  function playHls(url) {
+    if (Hls.isSupported()) {
+      hlsInstance = new Hls({ enableWorker: true });
+      hlsInstance.loadSource(url);
+      hlsInstance.attachMedia(video);
+      hlsInstance.on(Hls.Events.MANIFEST_PARSED, function (_, data) {
+        setStatus('HLS: manifesto carregado (' + data.levels.length + ' níveis de qualidade)', 'ok');
+
+        const items = [{ label: 'Auto', value: -1 }];
+        data.levels.forEach(function (level, index) {
+          items.push({
+            label: formatQuality(level.width, level.height, level.bitrate),
+            value: index
+          });
+        });
+        renderQualityList(items, function (value) {
+          // -1 devolve o controle ao ABR; nextLevel troca sem descartar o buffer atual
+          hlsInstance.nextLevel = value;
+          if (value === -1) markActiveQuality(-1);
+        });
+        markActiveQuality(-1);
+
+        video.play().catch(function () { /* autoplay bloqueado — usuário dá play */ });
+      });
+      hlsInstance.on(Hls.Events.LEVEL_SWITCHED, function (_, data) {
+        // Em modo Auto mantém "Auto" destacado; em modo manual destaca o nível escolhido
+        if (hlsInstance.autoLevelEnabled) markActiveQuality(-1);
+        else markActiveQuality(data.level);
+      });
+      hlsInstance.on(Hls.Events.ERROR, function (_, data) {
+        if (data.fatal) {
+          setStatus('HLS erro fatal: ' + data.type + ' / ' + data.details, 'error');
+          hlsInstance.destroy();
+          hlsInstance = null;
+        }
+      });
+    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      // Safari: suporte nativo a HLS
+      video.src = url;
+      video.addEventListener('loadedmetadata', function onMeta() {
+        video.removeEventListener('loadedmetadata', onMeta);
+        setStatus('HLS: reprodução nativa (Safari)', 'ok');
+        video.play().catch(function () {});
+      });
+      video.addEventListener('error', function () {
+        setStatus('HLS: erro ao carregar o stream nativamente', 'error');
+      }, { once: true });
+    } else {
+      setStatus('HLS não é suportado neste navegador.', 'error');
+    }
+  }
+
+  function playDash(url) {
+    dashInstance = dashjs.MediaPlayer().create();
+    dashInstance.initialize(video, url, true);
+    dashInstance.on(dashjs.MediaPlayer.events.STREAM_INITIALIZED, function () {
+      const bitrates = dashInstance.getBitrateInfoListFor('video') || [];
+      setStatus('DASH: stream inicializado (' + bitrates.length + ' representations de vídeo)', 'ok');
+
+      const items = [{ label: 'Auto', value: -1 }];
+      bitrates.forEach(function (info) {
+        items.push({
+          label: formatQuality(info.width, info.height, info.bitrate),
+          value: info.qualityIndex
+        });
+      });
+      renderQualityList(items, function (value) {
+        if (value === -1) {
+          dashInstance.updateSettings({
+            streaming: { abr: { autoSwitchBitrate: { video: true } } }
+          });
+          markActiveQuality(-1);
+        } else {
+          // ABR precisa ser desligado antes da troca manual, senão ele reverte a escolha
+          dashInstance.updateSettings({
+            streaming: { abr: { autoSwitchBitrate: { video: false } } }
+          });
+          dashInstance.setQualityFor('video', value);
+        }
+      });
+      markActiveQuality(-1);
+    });
+    dashInstance.on(dashjs.MediaPlayer.events.QUALITY_CHANGE_RENDERED, function (e) {
+      if (e.mediaType !== 'video') return;
+      const abrAuto = dashInstance.getSettings().streaming.abr.autoSwitchBitrate.video;
+      if (abrAuto) markActiveQuality(-1);
+      else markActiveQuality(e.newQuality);
+    });
+    dashInstance.on(dashjs.MediaPlayer.events.ERROR, function (e) {
+      const msg = e.error && e.error.message ? e.error.message : JSON.stringify(e.error);
+      setStatus('DASH erro: ' + msg, 'error');
+    });
+  }
+
+  function play(url, protocol) {
+    destroyPlayers();
+    setStatus('Carregando ' + protocol.toUpperCase() + ': ' + url);
+    if (protocol === 'hls') playHls(url);
+    else playDash(url);
+  }
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    const url = urlInput.value.trim();
+    if (!url) return;
+
+    let protocol = protocolSelect.value;
+    if (protocol === 'auto') {
+      protocol = detectProtocol(url);
+      if (!protocol) {
+        setStatus('Não foi possível detectar o protocolo pela extensão. Selecione HLS ou DASH manualmente.', 'error');
+        return;
+      }
+    }
+    play(url, protocol);
+  });
+
+  document.querySelectorAll('.samples a').forEach(function (link) {
+    link.addEventListener('click', function (e) {
+      e.preventDefault();
+      urlInput.value = link.dataset.url;
+      protocolSelect.value = 'auto';
+      form.requestSubmit();
+    });
+  });
+})();
+</script>
+</body>
+</html>
