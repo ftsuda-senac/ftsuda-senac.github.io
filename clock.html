@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Relógio</title>
+<style>
+  /* Tema claro é o padrão; o escuro entra por preferência do sistema ou por escolha explícita */
+  :root {
+    color-scheme: light;
+    --bg: #f4f6f8;
+    --surface: #ffffff;
+    --border: #d7dde3;
+    --text: #1a2027;
+    --muted: #5c6874;
+    --accent: #2f8f84;
+    --accent-fg: #ffffff;
+    --seg-bg: #eef1f4;
+  }
+  /* "Seguir o sistema": só vale quando o usuário não fixou o tema claro */
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: #101418;
+      --surface: #1a2027;
+      --border: #2b333d;
+      --text: #e6ebf0;
+      --muted: #8a97a5;
+      --accent: #3fb6a8;
+      --accent-fg: #08211e;
+      --seg-bg: #141a20;
+    }
+  }
+  /* Escolha explícita de escuro vence a preferência do sistema */
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #101418;
+    --surface: #1a2027;
+    --border: #2b333d;
+    --text: #e6ebf0;
+    --muted: #8a97a5;
+    --accent: #3fb6a8;
+    --accent-fg: #08211e;
+    --seg-bg: #141a20;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    transition: background-color 0.2s, color 0.2s;
+  }
+
+  /* --clock-color só existe quando o usuário escolhe uma cor; senão herda a cor do tema */
+  .clock {
+    color: var(--clock-color, var(--text));
+    text-align: center;
+    line-height: 1.1;
+    max-width: 100%;
+  }
+
+  .weekday {
+    font-size: clamp(1.1rem, 5.5vw, 3rem);
+    font-weight: 600;
+    letter-spacing: 0.3em;
+    text-indent: 0.3em; /* compensa o letter-spacing sobrando à direita */
+    text-transform: uppercase;
+    opacity: 0.75;
+  }
+
+  .time {
+    display: block;
+    font-family: ui-monospace, "Cascadia Code", "SF Mono", Menlo, Consolas, monospace;
+    font-size: clamp(3rem, 16vw, 11rem);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+    margin: 0.1em 0;
+  }
+
+  /* AM/PM em corpo menor para o relógio de 12h não estourar a largura da tela */
+  .meridiem {
+    font-size: 0.35em;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    margin-left: 0.25em;
+    vertical-align: 0.35em;
+  }
+  .meridiem:empty { display: none; }
+
+  .date {
+    font-size: clamp(1.15rem, 5vw, 2.6rem);
+    opacity: 0.75;
+  }
+
+  .settings-btn {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    background: none;
+    border: none;
+    color: var(--muted);
+    padding: 0.5rem;
+    border-radius: 8px;
+    cursor: pointer;
+    opacity: 0.4;
+    transition: opacity 0.15s, background-color 0.15s;
+    line-height: 0;
+  }
+  .settings-btn:hover { opacity: 1; background: var(--surface); }
+  .settings-btn:focus-visible {
+    opacity: 1;
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  .settings-btn svg { width: 24px; height: 24px; display: block; }
+
+  dialog {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--surface);
+    color: var(--text);
+    padding: 0;
+    width: min(92vw, 24rem);
+    margin: auto;
+  }
+  dialog::backdrop { background: rgba(0, 0, 0, 0.55); }
+
+  .dialog-body { padding: 1.25rem; display: flex; flex-direction: column; gap: 1.25rem; }
+  .dialog-title { font-size: 1rem; font-weight: 600; }
+
+  fieldset { border: none; display: flex; flex-direction: column; gap: 0.5rem; }
+  legend { font-size: 0.78rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; padding: 0; margin-bottom: 0.5rem; }
+
+  /* Controle segmentado: o radio some e o label vira o botão visível */
+  .seg { display: flex; gap: 0.25rem; background: var(--seg-bg); border: 1px solid var(--border); border-radius: 8px; padding: 0.25rem; }
+  .seg input { position: absolute; opacity: 0; pointer-events: none; }
+  .seg label {
+    flex: 1;
+    text-align: center;
+    padding: 0.5rem 0.25rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.15s;
+  }
+  .seg label:hover { background: var(--border); }
+  .seg input:checked + label { background: var(--accent); color: var(--accent-fg); font-weight: 600; }
+  .seg input:checked + label:hover { background: var(--accent); }
+  .seg input:focus-visible + label { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .swatches { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; }
+  .swatch {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    padding: 0;
+    transition: transform 0.1s;
+  }
+  .swatch:hover { transform: scale(1.12); }
+  .swatch[aria-pressed="true"] { outline: 2px solid var(--text); outline-offset: 2px; }
+  .swatch:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  input[type="color"] {
+    width: 40px;
+    height: 28px;
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: none;
+    cursor: pointer;
+  }
+  input[type="color"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .link-btn {
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-size: 0.8rem;
+    text-decoration: underline;
+    cursor: pointer;
+    padding: 0;
+    align-self: flex-start;
+  }
+  .link-btn:hover { color: var(--text); }
+  .link-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+
+  .close-btn {
+    background: var(--accent);
+    color: var(--accent-fg);
+    border: none;
+    border-radius: 8px;
+    padding: 0.65rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    width: 100%;
+  }
+  .close-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<button type="button" class="settings-btn" id="openSettings" aria-label="Configurações" title="Configurações">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <circle cx="12" cy="12" r="3"></circle>
+    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+  </svg>
+</button>
+
+<main class="clock">
+  <div class="weekday" id="weekday"></div>
+  <time class="time" id="time"><span id="timeDigits"></span><span class="meridiem" id="meridiem"></span></time>
+  <div class="date" id="date"></div>
+</main>
+
+<dialog id="settings" aria-labelledby="dialogTitle">
+  <div class="dialog-body">
+    <h2 class="dialog-title" id="dialogTitle">Configurações</h2>
+
+    <fieldset>
+      <legend id="lblLanguage">Idioma</legend>
+      <div class="seg">
+        <input type="radio" name="lang" id="lang-pt" value="pt-BR">
+        <label for="lang-pt">Português</label>
+        <input type="radio" name="lang" id="lang-en" value="en-US">
+        <label for="lang-en">English</label>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend id="lblTheme">Fundo</legend>
+      <div class="seg">
+        <input type="radio" name="theme" id="theme-dark" value="dark">
+        <label for="theme-dark" id="lblDark">Escuro</label>
+        <input type="radio" name="theme" id="theme-light" value="light">
+        <label for="theme-light" id="lblLight">Claro</label>
+        <input type="radio" name="theme" id="theme-system" value="system">
+        <label for="theme-system" id="lblSystem">Sistema</label>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend id="lblColor">Cor da letra</legend>
+      <div class="swatches" id="swatches">
+        <input type="color" id="customColor" aria-label="Cor personalizada">
+      </div>
+      <button type="button" class="link-btn" id="resetColor">Usar cor padrão do tema</button>
+    </fieldset>
+
+    <form method="dialog">
+      <button class="close-btn" id="closeBtn">Fechar</button>
+    </form>
+  </div>
+</dialog>
+
+<script>
+(function () {
+  'use strict';
+
+  var STORE_KEY = 'clock.settings';
+
+  var PALETTE = ['#3fb6a8', '#6f9bf0', '#b07ae0', '#e0685f', '#f0a03c', '#6fbf73'];
+
+  var I18N = {
+    'pt-BR': {
+      title: 'Relógio',
+      settings: 'Configurações',
+      language: 'Idioma',
+      theme: 'Fundo',
+      dark: 'Escuro',
+      light: 'Claro',
+      system: 'Sistema',
+      color: 'Cor da letra',
+      customColor: 'Cor personalizada',
+      resetColor: 'Usar cor padrão do tema',
+      close: 'Fechar'
+    },
+    'en-US': {
+      title: 'Clock',
+      settings: 'Settings',
+      language: 'Language',
+      theme: 'Background',
+      dark: 'Dark',
+      light: 'Light',
+      system: 'System',
+      color: 'Text color',
+      customColor: 'Custom color',
+      resetColor: 'Use theme default color',
+      close: 'Close'
+    }
+  };
+
+  var root = document.documentElement;
+  var weekdayEl = document.getElementById('weekday');
+  var timeEl = document.getElementById('time');
+  var digitsEl = document.getElementById('timeDigits');
+  var meridiemEl = document.getElementById('meridiem');
+  var dateEl = document.getElementById('date');
+  var dialog = document.getElementById('settings');
+  var swatchesEl = document.getElementById('swatches');
+  var customColorEl = document.getElementById('customColor');
+
+  var settings = loadSettings();
+  var weekdayFmt, timeFmt, dateFmt, timerId = null;
+
+  function loadSettings() {
+    var saved = {};
+    try {
+      saved = JSON.parse(localStorage.getItem(STORE_KEY)) || {};
+    } catch (e) { /* armazenamento indisponível ou JSON corrompido — usa os padrões */ }
+
+    return {
+      lang: I18N[saved.lang] ? saved.lang : 'pt-BR',
+      theme: /^(dark|light|system)$/.test(saved.theme) ? saved.theme : 'system',
+      color: /^#[0-9a-f]{6}$/i.test(saved.color) ? saved.color : null
+    };
+  }
+
+  function saveSettings() {
+    try {
+      localStorage.setItem(STORE_KEY, JSON.stringify(settings));
+    } catch (e) { /* modo privativo / cota cheia — a página segue funcionando sem persistir */ }
+  }
+
+  /* ---------- Idioma ---------- */
+
+  function buildFormatters() {
+    var lang = settings.lang;
+    weekdayFmt = new Intl.DateTimeFormat(lang, { weekday: 'long' });
+    dateFmt = new Intl.DateTimeFormat(lang, { day: 'numeric', month: 'long', year: 'numeric' });
+    // Português usa 24h (h23 evita o "24:00:00" da meia-noite); inglês usa 12h com AM/PM
+    timeFmt = new Intl.DateTimeFormat(lang, lang === 'en-US'
+      ? { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }
+      : { hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' });
+  }
+
+  function applyLanguage() {
+    var t = I18N[settings.lang];
+    root.lang = settings.lang;
+    document.title = t.title;
+    document.getElementById('dialogTitle').textContent = t.settings;
+    document.getElementById('lblLanguage').textContent = t.language;
+    document.getElementById('lblTheme').textContent = t.theme;
+    document.getElementById('lblDark').textContent = t.dark;
+    document.getElementById('lblLight').textContent = t.light;
+    document.getElementById('lblSystem').textContent = t.system;
+    document.getElementById('lblColor').textContent = t.color;
+    document.getElementById('resetColor').textContent = t.resetColor;
+    document.getElementById('closeBtn').textContent = t.close;
+    document.getElementById('openSettings').setAttribute('aria-label', t.settings);
+    document.getElementById('openSettings').title = t.settings;
+    customColorEl.setAttribute('aria-label', t.customColor);
+    buildFormatters();
+    render();
+  }
+
+  /* ---------- Tema ---------- */
+
+  function applyTheme() {
+    // Sem o atributo, o CSS cai na preferência do sistema
+    if (settings.theme === 'system') root.removeAttribute('data-theme');
+    else root.setAttribute('data-theme', settings.theme);
+  }
+
+  /* ---------- Cor ---------- */
+
+  function applyColor() {
+    if (settings.color) root.style.setProperty('--clock-color', settings.color);
+    else root.style.removeProperty('--clock-color');
+
+    swatchesEl.querySelectorAll('.swatch').forEach(function (btn) {
+      btn.setAttribute('aria-pressed', String(btn.dataset.color === settings.color));
+    });
+    if (settings.color) customColorEl.value = settings.color;
+  }
+
+  function setColor(value) {
+    settings.color = value;
+    applyColor();
+    saveSettings();
+  }
+
+  function buildSwatches() {
+    PALETTE.forEach(function (color) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'swatch';
+      btn.style.background = color;
+      btn.dataset.color = color;
+      btn.setAttribute('aria-label', color);
+      btn.setAttribute('aria-pressed', 'false');
+      btn.addEventListener('click', function () { setColor(color); });
+      swatchesEl.insertBefore(btn, customColorEl);
+    });
+  }
+
+  /* ---------- Relógio ---------- */
+
+  function render() {
+    var now = new Date();
+
+    weekdayEl.textContent = weekdayFmt.format(now);
+    dateEl.textContent = dateFmt.format(now);
+
+    // Separa o AM/PM para poder exibi-lo em corpo menor ao lado dos dígitos
+    var digits = '';
+    var meridiem = '';
+    timeFmt.formatToParts(now).forEach(function (part) {
+      if (part.type === 'dayPeriod') meridiem = part.value;
+      else if (part.type === 'literal' && /^\s+$/.test(part.value)) return; // espaço antes do AM/PM
+      else digits += part.value;
+    });
+
+    digitsEl.textContent = digits;
+    meridiemEl.textContent = meridiem;
+    timeEl.dateTime = pad(now.getHours()) + ':' + pad(now.getMinutes()) + ':' + pad(now.getSeconds());
+  }
+
+  function pad(n) {
+    return String(n).padStart(2, '0');
+  }
+
+  // Reagenda a cada virada de segundo em vez de usar setInterval fixo, para não acumular atraso
+  function tick() {
+    render();
+    timerId = setTimeout(tick, 1000 - (Date.now() % 1000));
+  }
+
+  /* ---------- Inicialização ---------- */
+
+  buildSwatches();
+  applyTheme();
+  applyColor();
+  applyLanguage();
+
+  document.getElementById('lang-' + (settings.lang === 'en-US' ? 'en' : 'pt')).checked = true;
+  document.getElementById('theme-' + settings.theme).checked = true;
+
+  document.querySelectorAll('input[name="lang"]').forEach(function (input) {
+    input.addEventListener('change', function () {
+      settings.lang = input.value;
+      applyLanguage();
+      saveSettings();
+    });
+  });
+
+  document.querySelectorAll('input[name="theme"]').forEach(function (input) {
+    input.addEventListener('change', function () {
+      settings.theme = input.value;
+      applyTheme();
+      saveSettings();
+    });
+  });
+
+  customColorEl.addEventListener('input', function () {
+    setColor(customColorEl.value);
+  });
+
+  document.getElementById('resetColor').addEventListener('click', function () {
+    setColor(null);
+  });
+
+  document.getElementById('openSettings').addEventListener('click', function () {
+    dialog.showModal();
+  });
+
+  // Ao voltar para a aba o relógio pode estar defasado (timers são estrangulados em segundo plano)
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden) {
+      clearTimeout(timerId);
+      tick();
+    }
+  });
+
+  tick();
+})();
+</script>
+</body>
+</html>
