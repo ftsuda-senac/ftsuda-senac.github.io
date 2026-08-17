@@ -1,0 +1,36 @@
+{
+  "id": 1,
+  "username": "fulano",
+  "nome": "Fulano da Silva",
+  "foto": "fulano.jpg",
+  "dados_pessoais": {
+    "nascimento": "1995-05-12",
+    "email": "fulano.frontend@email.com",
+    "telefone": "(21) 99999-1234",
+    "linkedin": "linkedin.com/in/fulano-dev",
+    "github": "github.com/fulano-ui"
+  },
+  "conhecimentos": [
+    "HTML5 & CSS3",
+    "Javascript (ES6+)",
+    "Angular",
+    "UI/UX Design",
+    "Figma",
+    "SASS/SCSS"
+  ],
+  "experiencias_profissionais": [
+    {
+      "cargo": "Desenvolvedor Frontend Pleno",
+      "empresa": "Tech Solutions",
+      "descricao": "Desenvolvimento de interfaces responsivas utilizando Angular e criação de protótipos de alta fidelidade no Figma. Implementação de Design Systems.",
+      "periodo": "Jan 2021 - Atual"
+    }
+  ],
+  "formacoes_academicas": [
+    {
+      "curso": "Análise e Desenvolvimento de Sistemas",
+      "instituicao": "CAS - Centro Universitário Senac",
+      "conclusao": "Dezembro 2020"
+    }
+  ]
+}

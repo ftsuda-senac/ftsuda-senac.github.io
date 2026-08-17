@@ -1,0 +1,20 @@
+[
+  {
+    "id": 1,
+    "username": "fulano",
+    "nome": "Fulano da Silva",
+    "foto": "/tads/img/fulano.jpg"
+  },
+  {
+    "id": 2,
+    "username": "ciclano",
+    "nome": "Ciclano Oliveira",
+    "foto": "/tads/img/ciclano.jpg"
+  },
+  {
+    "id": 3,
+    "username": "beltrana",
+    "nome": "Beltrana Pereira",
+    "foto": "/tads/img/beltrana.jpg"
+  }
+]

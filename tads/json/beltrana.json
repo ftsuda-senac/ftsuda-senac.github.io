@@ -1,0 +1,41 @@
+{
+  "id": 3,
+  "username": "beltrana",
+  "nome": "Beltrana Pereira",
+  "foto": "beltrana.jpg",
+  "dados_pessoais": {
+    "nascimento": "1988-02-15",
+    "email": "beltrana.pm@email.com",
+    "telefone": "(97) 97777-4321",
+    "linkedin": "linkedin.com/in/beltrana-pm",
+    "github": "github.com/beltrana-gestao"
+  },
+  "conhecimentos": [
+    "Gestão Ágil (Scrum/Kanban)",
+    "Jira & Confluence",
+    "Liderança de Equipes",
+    "Negociação",
+    "PMBOK",
+    "Inglês Fluente"
+  ],
+  "experiencias_profissionais": [
+    {
+      "cargo": "Gerente de Projetos de TI",
+      "empresa": "Global Tech Services",
+      "descricao": "Gerenciamento de squads ágeis, priorização de backlog e comunicação com stakeholders internacionais. Garantia de entregas dentro do prazo e orçamento.",
+      "periodo": "Jun 2019 - Atual"
+    }
+  ],
+  "formacoes_academicas": [
+    {
+      "curso": "MBA em Gestão de Projetos",
+      "instituicao": "Fundação Getúlio Vargas",
+      "conclusao": "Dezembro 2020"
+    },
+    {
+      "curso": "Bacharelado em Administração",
+      "instituicao": "PUC Minas",
+      "conclusao": "Dezembro 2010"
+    }
+  ]
+}

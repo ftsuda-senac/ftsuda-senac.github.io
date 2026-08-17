@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Visualizador de Currículos</title>
+  <style>
+    /* --- Reset e Configurações Globais --- */
+    :root {
+      --primary-blue: #4a90e2;
+      --secondary-gray: #95a5a6;
+      --border-color: #000;
+      --bg-color: #f4f4f4;
+      --text-color: #333;
+      --header-orange: #f39c12;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    .top-bar {
+      background-color: var(--header-orange);
+      height: 20px;
+      width: 100%;
+    }
+
+    .main-container {
+      max-width: 900px;
+      margin: 40px auto;
+      padding: 0 20px;
+      width: 100%;
+    }
+
+    .toggle-buttons {
+      display: flex;
+      gap: 15px;
+      margin-bottom: 30px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      padding: 10px 40px;
+      border: 1px solid #333;
+      border-radius: 6px;
+      font-size: 1rem;
+      cursor: pointer;
+      font-weight: 500;
+      color: white;
+      transition: all 0.2s ease;
+    }
+
+    .btn-active {
+      background-color: var(--primary-blue);
+      transform: scale(1.05);
+    }
+
+    .btn-inactive {
+      background-color: var(--secondary-gray);
+    }
+
+    .btn:hover {
+      opacity: 0.9;
+    }
+
+    .resume-grid {
+      display: grid;
+      grid-template-columns: 250px 1fr;
+      gap: 30px;
+      background-color: white;
+      padding: 20px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+    }
+
+    .resume-header {
+      grid-column: 2;
+      margin-bottom: 10px;
+    }
+
+    .resume-header h1 {
+      font-size: 1.5rem;
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* --- Atualização da área da foto --- */
+    .photo-placeholder {
+        width: 100%;
+        height: 300px;
+        background-color: var(--secondary-gray);
+        border: 1px solid var(--border-color);
+        
+        /* Propriedades essenciais para conter a imagem */
+        overflow: hidden; /* Garante que nada "vaze" para fora das bordas */
+        position: relative;
+        display: block; /* Remove o display: flex antigo que era para centralizar texto */
+    }
+
+    /* Estilo da imagem para ocupar o espaço corretamente */
+    .photo-placeholder img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover; /* O segredo: preenche a área mantendo a proporção (zoom/crop automático) */
+        object-position: center;
+        display: block;
+    }
+    
+    /*
+    .photo-placeholder {
+      background-color: var(--secondary-gray);
+      width: 100%;
+      height: 200px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--border-color);
+      color: white;
+      font-weight: bold;
+      font-size: 1.2rem;
+      object-fit: cover;
+    }
+      */
+
+    /* Caso use tag IMG futuramente */
+    img.photo-placeholder {
+      padding: 0;
+    }
+
+    .info-box {
+      border: 1px solid var(--border-color);
+      padding: 15px;
+      background-color: white;
+    }
+
+    .info-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      font-size: 0.9rem;
+    }
+
+    .info-list li strong {
+      display: block;
+      font-size: 0.8rem;
+      color: #666;
+      margin-bottom: 2px;
+    }
+
+    .skills-box h3 {
+      margin-bottom: 10px;
+      font-size: 1rem;
+      border-bottom: 2px solid #333;
+      padding-bottom: 5px;
+    }
+
+    .main-content {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .content-section {
+      border: 1px solid var(--border-color);
+      padding: 20px;
+      background-color: white;
+      height: 100%;
+    }
+
+    .content-section h2 {
+      font-size: 1.2rem;
+      margin-bottom: 15px;
+      font-weight: 700;
+    }
+
+    .experience-item,
+    .education-item {
+      margin-bottom: 20px;
+      border-bottom: 1px dashed #ccc;
+      padding-bottom: 15px;
+    }
+
+    .experience-item:last-child,
+    .education-item:last-child {
+      border-bottom: none;
+    }
+
+    .item-row {
+      display: flex;
+      margin-bottom: 5px;
+      line-height: 1.4;
+    }
+
+    .bullet {
+      margin-right: 10px;
+      font-weight: bold;
+      min-width: 10px;
+    }
+
+    footer {
+      margin-top: auto;
+      padding: 20px;
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    .logo-placeholder {
+      font-weight: 900;
+      color: #004587;
+      font-size: 1.5rem;
+      font-style: italic;
+    }
+
+    @media (max-width: 768px) {
+      .resume-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .resume-header {
+        grid-column: 1;
+        text-align: center;
+      }
+
+      .sidebar {
+        order: 2;
+      }
+
+      .main-content {
+        order: 1;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="top-bar"></div>
+
+  <div class="main-container">
+
+    <div class="toggle-buttons">
+      <button class="btn btn-inactive" onclick="carregarPerfil('fulano.json', this)">Fulano</button>
+      <button class="btn btn-inactive" onclick="carregarPerfil('ciclano.json', this)">Ciclano</button>
+      <button class="btn btn-inactive" onclick="carregarPerfil('beltrana.json', this)">Beltrana</button>
+    </div>
+
+    <main class="resume-grid">
+
+      <header class="resume-header">
+        <h1 id="nome-completo">Carregando...</h1>
+      </header>
+
+      <aside class="sidebar">
+        <div id="foto-perfil" class="photo-placeholder">
+          FOTO
+        </div>
+
+        <div class="info-box">
+          <ul class="info-list">
+            <li><strong>Data nascimento</strong> <span id="data-nascimento">-</span></li>
+            <li><strong>E-mail</strong> <span id="email">-</span></li>
+            <li><strong>Telefone</strong> <span id="telefone">-</span></li>
+            <li><strong>Linkedin</strong> <span id="linkedin">-</span></li>
+            <li><strong>Github</strong> <span id="github">-</span></li>
+          </ul>
+        </div>
+
+        <div class="info-box skills-box">
+          <h3>Conhecimentos</h3>
+          <ul id="lista-conhecimentos" class="info-list">
+          </ul>
+        </div>
+      </aside>
+
+      <section class="main-content">
+
+        <div class="content-section">
+          <h2>Experiências profissionais</h2>
+          <div id="container-experiencia">
+          </div>
+        </div>
+
+        <div class="content-section">
+          <h2>Formação acadêmica</h2>
+          <div id="container-formacao">
+          </div>
+        </div>
+
+      </section>
+    </main>
+  </div>
+
+  <footer>
+    <div class="logo-placeholder">Senac</div>
+  </footer>
+
+  <script>
+    // Função utilitária para formatar data de YYYY-MM-DD para DD/MM/YYYY
+    function formatarData(dataISO) {
+      if (!dataISO) return "";
+      const [ano, mes, dia] = dataISO.split('-');
+      return `${dia}/${mes}/${ano}`;
+    }
+
+    // Função principal de carregamento
+    async function carregarPerfil(arquivoJson, botaoClicado) {
+
+      // 1. Atualizar estado visual dos botões
+      const botoes = document.querySelectorAll('.btn');
+      botoes.forEach(btn => {
+        btn.classList.remove('btn-active');
+        btn.classList.add('btn-inactive');
+      });
+
+      if (botaoClicado) {
+        botaoClicado.classList.remove('btn-inactive');
+        botaoClicado.classList.add('btn-active');
+      }
+
+      try {
+        // 2. Fetch API para buscar o arquivo JSON
+        const response = await fetch(arquivoJson);
+
+        if (!response.ok) {
+          throw new Error(`Erro HTTP: ${response.status}`);
+        }
+
+        const dados = await response.json();
+        preencherTela(dados);
+
+      } catch (erro) {
+        console.error('Erro ao carregar JSON:', erro);
+        alert('Erro ao carregar os dados do usuário. Verifique se os arquivos JSON estão na mesma pasta.');
+      }
+    }
+
+    // Função para preencher o DOM com os dados recebidos
+    function preencherTela(dados) {
+      // Dados Básicos
+      document.getElementById('nome-completo').textContent = dados.nome;
+
+      document.getElementById('foto-perfil').innerHTML = `<img src="${dados.foto}" ...>`
+
+      // Dados Pessoais
+      document.getElementById('data-nascimento').textContent = formatarData(dados.dados_pessoais.nascimento);
+      document.getElementById('email').textContent = dados.dados_pessoais.email;
+      document.getElementById('telefone').textContent = dados.dados_pessoais.telefone;
+      document.getElementById('linkedin').textContent = dados.dados_pessoais.linkedin;
+      document.getElementById('github').textContent = dados.dados_pessoais.github;
+
+      // Lista de Conhecimentos
+      const listaSkills = document.getElementById('lista-conhecimentos');
+      listaSkills.innerHTML = ''; // Limpa lista anterior
+      dados.conhecimentos.forEach(skill => {
+        const li = document.createElement('li');
+        li.textContent = `- ${skill}`;
+        listaSkills.appendChild(li);
+      });
+
+      // Experiências Profissionais
+      const containerExp = document.getElementById('container-experiencia');
+      containerExp.innerHTML = ''; // Limpa anterior
+
+      dados.experiencias_profissionais.forEach(exp => {
+        const div = document.createElement('div');
+        div.className = 'experience-item';
+        div.innerHTML = `
+                    <div class="item-row"><span class="bullet">-</span> <strong>Cargo:</strong>&nbsp; ${exp.cargo}</div>
+                    <div class="item-row"><span class="bullet">-</span> <strong>Empresa:</strong>&nbsp; ${exp.empresa}</div>
+                    <div class="item-row"><span class="bullet">-</span> <div>${exp.descricao}</div></div>
+                    <div class="item-row"><span class="bullet">-</span> <em>${exp.periodo}</em></div>
+                `;
+        containerExp.appendChild(div);
+      });
+
+      // Formação Acadêmica
+      const containerForm = document.getElementById('container-formacao');
+      containerForm.innerHTML = ''; // Limpa anterior
+
+      dados.formacoes_academicas.forEach(form => {
+        const div = document.createElement('div');
+        div.className = 'education-item';
+        div.innerHTML = `
+                    <div class="item-row"><span class="bullet">-</span> <strong>Curso:</strong>&nbsp; ${form.curso}</div>
+                    <div class="item-row"><span class="bullet">-</span> <strong>Instituição:</strong>&nbsp; ${form.instituicao}</div>
+                    <div class="item-row"><span class="bullet">-</span> <em>Conclusão: ${form.conclusao}</em></div>
+                `;
+        containerForm.appendChild(div);
+      });
+    }
+
+    // Carregar o primeiro perfil automaticamente ao abrir
+    document.addEventListener('DOMContentLoaded', () => {
+      // Simula clique no primeiro botão
+      document.querySelector('.toggle-buttons button').click();
+    });
+
+  </script>
+</body>
+
+</html>

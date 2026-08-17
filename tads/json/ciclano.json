@@ -1,0 +1,42 @@
+{
+  "id": 2,
+  "username": "ciclano",
+  "nome": "Ciclano Oliveira",
+  "foto": "ciclano.jpg",
+  "dados_pessoais": {
+    "nascimento": "1990-08-23",
+    "email": "ciclano.java@email.com",
+    "telefone": "(81) 98888-5678",
+    "linkedin": "linkedin.com/in/ciclano-java",
+    "github": "github.com/ciclano-backend"
+  },
+  "conhecimentos": [
+    "Java 8+",
+    "Spring Boot",
+    "Microservices",
+    "SQL (PostgreSQL)",
+    "Docker",
+    "AWS"
+  ],
+  "experiencias_profissionais": [
+    {
+      "cargo": "Desenvolvedor Backend Sênior",
+      "empresa": "Banco Digital Finance",
+      "descricao": "Arquitetura e desenvolvimento de microsserviços escaláveis usando Spring Boot. Otimização de queries SQL e implementação de segurança com OAuth2.",
+      "periodo": "Mar 2022 - Atual"
+    },
+    {
+      "cargo": "Desenvolvedor Java Pleno",
+      "empresa": "SoftHouse Legacy",
+      "descricao": "Manutenção de sistemas legados e migração de monolitos para arquitetura baseada em serviços. Integração de APIs REST.",
+      "periodo": "Fev 2018 - Fev 2022"
+    }
+  ],
+  "formacoes_academicas": [
+    {
+      "curso": "Ciência da Computação",
+      "instituicao": "UFSCAR - Universidade Federal de São Carlos",
+      "conclusao": "Dezembro 2017"
+    }
+  ]
+}
