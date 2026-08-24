@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Editor HTML, CSS e JavaScript com prévia em tempo real." />
+    <title>Live Web Editor - Editor web no navegador</title>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main class="studio-shell">
+      <header class="topbar">
+        <a class="brand" href="#editor" aria-label="Live Editor, voltar ao editor">
+          <span class="brand-mark" aria-hidden="true">&lt;/&gt;</span>
+          <span>LIVE WEB EDITOR</span>
+        </a>
+
+        <div class="project-controls">
+          <label class="project-field">
+            <span>Projeto</span>
+            <input id="project-title" value="Meu projeto" maxlength="100" autocomplete="off" aria-label="Nome do projeto" />
+          </label>
+          <button id="project-description-button" class="ghost-button description-button" type="button">Descrição</button>
+        </div>
+
+        <div class="topbar-actions">
+          <label class="theme-control">
+            <span>Aparência</span>
+            <select id="theme-select" aria-label="Aparência da interface">
+              <option value="system">Sistema</option>
+              <option value="light">Claro</option>
+              <option value="dark">Escuro</option>
+            </select>
+          </label>
+          <div class="projects-menu">
+            <button id="projects-button" class="ghost-button" type="button" aria-expanded="false" aria-controls="projects-popover">Projetos</button>
+            <section id="projects-popover" class="projects-popover" hidden aria-label="Projetos salvos">
+              <div class="popover-title"><span>Salvos neste dispositivo</span><button id="close-projects" type="button" aria-label="Fechar projetos salvos">×</button></div>
+              <div id="projects-list" class="projects-list"></div>
+            </section>
+          </div>
+          <div class="examples-menu">
+            <button id="examples-button" class="ghost-button" type="button" aria-expanded="false" aria-controls="examples-popover">Exemplos</button>
+            <section id="examples-popover" class="projects-popover examples-popover" hidden aria-label="Catálogo de exemplos">
+              <div class="popover-title"><span>Exemplos prontos</span><button id="close-examples" type="button" aria-label="Fechar exemplos">×</button></div>
+              <div id="examples-list" class="examples-list"></div>
+            </section>
+          </div>
+          <div class="file-menu">
+            <button id="file-menu-button" class="ghost-button" type="button" aria-expanded="false" aria-controls="file-popover">Arquivo <span aria-hidden="true">⌄</span></button>
+            <section id="file-popover" class="file-popover" hidden aria-label="Ações do arquivo">
+              <button id="new-project-button" type="button">Novo projeto</button>
+              <button id="save-button" type="button">Salvar</button>
+              <div class="menu-separator" role="separator"></div>
+              <button id="export-button" type="button">Exportar ZIP</button>
+              <button id="import-button" type="button">Importar</button>
+            </section>
+          </div>
+        </div>
+      </header>
+
+      <section id="editor" class="workspace" aria-label="Editor de código">
+        <aside class="editor-column" aria-label="Arquivos do projeto">
+          <div class="editor-heading">
+            <h2 class="section-title">Editor</h2>
+            <div class="editor-heading-actions">
+              <div class="font-control" aria-label="Tamanho da fonte do editor">
+                <button id="font-decrease" type="button" aria-label="Diminuir fonte do editor">A−</button>
+                <output id="font-size-value" aria-live="polite">15 px</output>
+                <button id="font-increase" type="button" aria-label="Aumentar fonte do editor">A+</button>
+              </div>
+              <button id="assets-button" class="ghost-button assets-button" type="button">Assets</button>
+            </div>
+          </div>
+
+          <div class="editor-panels">
+            <section class="code-panel is-open" data-panel="html">
+              <h2><button class="panel-toggle" type="button" aria-expanded="true" aria-controls="html-editor"><span class="file-dot html-dot" aria-hidden="true"></span>HTML <small>conteúdo do body</small><span class="chevron" aria-hidden="true">⌄</span></button></h2>
+              <div id="html-editor" class="editor-surface"><textarea id="html-code" aria-label="Código HTML, somente conteúdo do body"><main class="card">
+  <span class="tag">Olá!</span>
+  <h1>Seu projeto começa aqui.</h1>
+  <p>Edite o HTML, CSS e JavaScript para criar algo novo.</p>
+  <button id="hello-button">Clique em mim</button>
+</main></textarea></div>
+            </section>
+
+            <section class="code-panel" data-panel="css">
+              <h2><button class="panel-toggle" type="button" aria-expanded="false" aria-controls="css-editor"><span class="file-dot css-dot" aria-hidden="true"></span>CSS <span class="chevron" aria-hidden="true">⌄</span></button></h2>
+              <div id="css-editor" class="editor-surface"><textarea id="css-code" aria-label="Código CSS">* { box-sizing: border-box; }
+body {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  margin: 0;
+  background: #f2f6ff;
+  color: #17213a;
+  font: 16px/1.5 system-ui, sans-serif;
+}
+.card {
+  width: min(560px, calc(100% - 40px));
+  padding: 48px;
+  border-radius: 20px;
+  background: white;
+  box-shadow: 0 20px 60px #b7c3dc80;
+}
+.tag { color: #307b64; font-weight: 700; }
+h1 { margin: 12px 0; font-size: clamp(2rem, 5vw, 3.5rem); line-height: 1.05; }
+button { padding: 11px 16px; border: 0; border-radius: 8px; background: #16213a; color: white; cursor: pointer; }</textarea></div>
+            </section>
+
+            <section class="code-panel" data-panel="javascript">
+              <h2><button class="panel-toggle" type="button" aria-expanded="false" aria-controls="javascript-editor"><span class="file-dot js-dot" aria-hidden="true"></span>JavaScript <span class="chevron" aria-hidden="true">⌄</span></button></h2>
+              <div id="javascript-editor" class="editor-surface"><textarea id="javascript-code" aria-label="Código JavaScript">const button = document.querySelector('#hello-button');
+
+button?.addEventListener('click', () => {
+  button.textContent = 'Funcionou!';
+});</textarea></div>
+            </section>
+          </div>
+        </aside>
+
+        <div id="workspace-resizer" class="workspace-resizer" role="separator" aria-orientation="vertical" aria-label="Redimensionar editor e prévia" aria-valuemin="25" aria-valuemax="75" aria-valuenow="46" tabindex="0"></div>
+
+        <section class="preview-column" aria-label="Prévia do projeto">
+          <div class="preview-heading">
+            <div><h2 class="section-title">Prévia</h2><button id="open-button" class="ghost-button preview-open-button" type="button">Abrir em nova janela</button></div>
+          </div>
+          <div class="preview-canvas">
+            <iframe id="preview-frame" title="Prévia do projeto" sandbox="allow-scripts"></iframe>
+            <p id="preview-error" class="preview-error" role="alert" hidden></p>
+          </div>
+        </section>
+      </section>
+
+      <footer>
+        <span>Editor web no seu navegador</span>
+        <span><a href="https://github.com/ftsuda-senac" target="_blank" rel="noopener noreferrer">@ftsuda-senac</a> - Feito com ChatGPT/Codex</span>
+        <span>Os seus projetos ficam no seu dispositivo.</span>
+      </footer>
+    </main>
+
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+    <dialog id="assets-dialog" class="assets-dialog" aria-labelledby="assets-title">
+      <form id="assets-form" novalidate>
+        <header class="dialog-heading">
+          <div><p class="eyebrow">PROJETO</p><h2 id="assets-title">Assets externos</h2></div>
+          <button id="close-assets" class="dialog-close" type="button" aria-label="Fechar">×</button>
+        </header>
+        <p class="dialog-description">Adicione URLs de folhas de estilo, scripts e fontes para carregá-los na prévia e na exportação.</p>
+        <div class="asset-add-row">
+          <label>Tipo
+            <select id="asset-type">
+              <option value="css">CSS</option>
+              <option value="javascript">JavaScript</option>
+              <option value="font">Fonte</option>
+            </select>
+          </label>
+          <label class="asset-url-field">URL do asset
+            <input id="asset-url" type="url" placeholder="https://exemplo.com/asset.css" required />
+          </label>
+          <button class="primary-button" type="submit">Adicionar</button>
+        </div>
+        <p id="asset-form-error" class="asset-form-error" role="alert" hidden></p>
+        <section class="asset-list-section" aria-labelledby="asset-list-title">
+          <h3 id="asset-list-title">Assets incluídos</h3>
+          <div id="asset-list" class="asset-list"></div>
+        </section>
+        <div class="dialog-footer"><button id="done-assets" class="ghost-button" type="button">Concluir</button></div>
+      </form>
+    </dialog>
+
+    <dialog id="project-description-dialog" class="assets-dialog project-description-dialog" aria-labelledby="project-description-title">
+      <form>
+        <header class="dialog-heading">
+          <div><p class="eyebrow">PROJETO</p><h2 id="project-description-title">Descrição do projeto</h2></div>
+          <button id="close-project-description" class="dialog-close" type="button" aria-label="Fechar">×</button>
+        </header>
+        <p class="dialog-description">Registre o objetivo, contexto ou anotações importantes deste projeto.</p>
+        <label class="description-field" for="project-description">Descrição <span><output id="description-count">0</output>/1000</span></label>
+        <textarea id="project-description" maxlength="1000" placeholder="Escreva uma descrição para este projeto…"></textarea>
+        <div class="dialog-footer">
+          <button id="cancel-project-description" class="ghost-button" type="button">Cancelar</button>
+          <button id="save-project-description" class="primary-button" type="button">Concluir</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="import-dialog" class="assets-dialog import-dialog" aria-labelledby="import-title">
+      <div class="import-dialog-content">
+        <header class="dialog-heading">
+          <div><p class="eyebrow">PROJETO</p><h2 id="import-title">Importar projeto</h2></div>
+          <button id="close-import" class="dialog-close" type="button" aria-label="Fechar">×</button>
+        </header>
+        <section class="import-section" aria-labelledby="zip-title">
+          <h3 id="zip-title">Importar ZIP do CodePen</h3>
+          <p>Selecione o arquivo exportado pelo CodePen. O conteúdo de HTML, CSS e JavaScript será carregado no editor.</p>
+          <div class="import-zip-row">
+            <input id="import-zip-file" type="file" accept=".zip,application/zip,application/x-zip-compressed" />
+            <button id="import-zip-button" class="ghost-button" type="button">Importar ZIP</button>
+          </div>
+        </section>
+        <div class="import-divider"><span>ou</span></div>
+        <section class="import-section" aria-labelledby="codepen-link-title">
+          <h3 id="codepen-link-title">Importar por URL do CodePen <small>experimental</small></h3>
+          <p>Tenta importar Pens públicos com HTML, CSS e JavaScript puros. O CodePen pode bloquear o acesso direto.</p>
+          <div class="import-link-row">
+            <input id="codepen-url" type="url" placeholder="https://codepen.io/usuario/pen/slug" />
+            <button id="import-link-button" class="primary-button" type="button">Importar URL</button>
+          </div>
+        </section>
+        <p id="import-error" class="asset-form-error" role="alert" hidden></p>
+        <div class="dialog-footer"><button id="cancel-import" class="ghost-button" type="button">Cancelar</button></div>
+      </div>
+    </dialog>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/xml/xml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/css/css.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/htmlmixed/htmlmixed.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="script.js"></script>
+  </body>
+</html>

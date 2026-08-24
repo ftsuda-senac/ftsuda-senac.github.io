@@ -1,0 +1,1 @@
+{"type":"JS","title":"Eventos de clique","description":"Executa um código quando o botão recebe um clique.","html":"<button id=\"button\">Clique</button>\n<pre id=\"result\"></pre>","css":"","javascript":"document.querySelector('#button').addEventListener('click', () => {\n  document.querySelector('#result').textContent = 'Você clicou.';\n});","assets":[]}

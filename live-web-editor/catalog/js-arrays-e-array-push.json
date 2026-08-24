@@ -1,0 +1,1 @@
+{"type":"JS","title":"Arrays e array.push()","description":"Adiciona um item a um array com push.","html":"<pre id=\"result\"></pre>","css":"","javascript":"const frutas = ['maçã', 'banana'];\nfrutas.push('laranja');\n\ndocument.querySelector('#result').textContent = frutas.join(', ');","assets":[]}

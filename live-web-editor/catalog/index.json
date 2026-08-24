@@ -1,0 +1,130 @@
+[
+  {
+    "type": "HTML",
+    "title": "Títulos <h1> a <h6>"
+  },
+  {
+    "type": "CSS",
+    "title": "Seletores"
+  },
+  {
+    "type": "CSS",
+    "title": "Seletores de atributos"
+  },
+  {
+    "type": "JS",
+    "title": "Fetch API"
+  },
+  {
+    "type": "HTML",
+    "title": "Lista ordenada e Lista não ordenada"
+  },
+  {
+    "type": "HTML",
+    "title": "Definition lists"
+  },
+  {
+    "type": "HTML",
+    "title": "Tabelas"
+  },
+  {
+    "type": "CSS",
+    "title": "Uso display flex básico"
+  },
+  {
+    "type": "CSS",
+    "title": "Uso de display grid básico"
+  },
+  {
+    "type": "JS",
+    "title": "Uso de alert, confirm e prompt"
+  },
+  {
+    "type": "HTML",
+    "title": "Links e imagens"
+  },
+  {
+    "type": "HTML",
+    "title": "Formulários e campos"
+  },
+  {
+    "type": "HTML",
+    "title": "Elementos semânticos"
+  },
+  {
+    "type": "HTML",
+    "title": "Comentários e entidades HTML"
+  },
+  {
+    "type": "CSS",
+    "title": "Cores, fontes e tamanhos"
+  },
+  {
+    "type": "CSS",
+    "title": "Margem, preenchimento e bordas"
+  },
+  {
+    "type": "CSS",
+    "title": "Box model"
+  },
+  {
+    "type": "CSS",
+    "title": "Display block, inline e inline-block"
+  },
+  {
+    "type": "CSS",
+    "title": "Pseudoclasses :hover, :focus e :first-child"
+  },
+  {
+    "type": "CSS",
+    "title": "Posicionamento relative, absolute e fixed"
+  },
+  {
+    "type": "CSS",
+    "title": "Media query mobile first"
+  },
+  {
+    "type": "CSS",
+    "title": "Transição simples"
+  },
+  {
+    "type": "JS",
+    "title": "Variáveis const e let"
+  },
+  {
+    "type": "JS",
+    "title": "Condicional if e else"
+  },
+  {
+    "type": "JS",
+    "title": "Laços for e for...of"
+  },
+  {
+    "type": "JS",
+    "title": "Arrays e array.push()"
+  },
+  {
+    "type": "JS",
+    "title": "Funções"
+  },
+  {
+    "type": "JS",
+    "title": "Eventos de clique"
+  },
+  {
+    "type": "JS",
+    "title": "Alterar texto com textContent"
+  },
+  {
+    "type": "JS",
+    "title": "Alterar classes com classList"
+  },
+  {
+    "type": "JS",
+    "title": "Ler valor de um input"
+  },
+  {
+    "type": "JS",
+    "title": "setTimeout e setInterval"
+  }
+]

@@ -1,0 +1,9 @@
+{
+  "type": "JS",
+  "title": "Uso de alert, confirm e prompt",
+  "description": "Mostra as caixas de diálogo alert, confirm e prompt.",
+  "html": "<button id=\"start\">Iniciar</button>",
+  "css": "",
+  "javascript": "document.querySelector('#start').addEventListener('click', () => {\n  const nome = prompt('Qual é o seu nome?');\n\n  if (confirm('Deseja mostrar uma saudação?')) {\n    alert(`Olá, ${nome}!`);\n  }\n});",
+  "assets": []
+}

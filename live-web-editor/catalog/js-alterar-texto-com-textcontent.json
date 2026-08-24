@@ -1,0 +1,1 @@
+{"type":"JS","title":"Alterar texto com textContent","description":"Altera o texto de um elemento.","html":"<p id=\"text\">Texto inicial</p>\n<button id=\"button\">Alterar</button>","css":"","javascript":"document.querySelector('#button').addEventListener('click', () => {\n  document.querySelector('#text').textContent = 'Texto alterado';\n});","assets":[]}

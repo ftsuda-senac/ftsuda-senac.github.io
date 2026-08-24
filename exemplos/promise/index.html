@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Promise vs Bloqueio Síncrono</title>
+<style>
+  :root {
+    --bg: #0b0e14;
+    --panel: #121826;
+    --panel-border: #1f2a3d;
+    --text: #e6e8ef;
+    --muted: #8a93a6;
+    --bad: #f2545b;
+    --bad-dim: #4a2226;
+    --good: #34d1bf;
+    --good-dim: #163330;
+    --mono: ui-monospace, "SF Mono", "Cascadia Code", "Fira Code", Consolas, monospace;
+    --sans: -apple-system, "Segoe UI", Inter, Roboto, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    padding: 24px 16px 64px;
+  }
+
+  .wrap { max-width: 980px; margin: 0 auto; }
+
+  header h1 {
+    font-size: 1.4rem;
+    margin-bottom: 4px;
+    letter-spacing: -0.01em;
+  }
+  header p {
+    color: var(--muted);
+    font-size: 0.92rem;
+    line-height: 1.5;
+    margin-top: 0;
+  }
+  header code { color: var(--good); font-family: var(--mono); }
+
+  .status-bar {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    flex-wrap: wrap;
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 10px;
+    padding: 14px 18px;
+    margin: 20px 0 28px;
+  }
+
+  #pulseIcon {
+    font-size: 1.4rem;
+    display: inline-block;
+    transition: none;
+  }
+
+  .status-item {
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+  .status-item strong {
+    color: var(--text);
+    font-size: 1rem;
+  }
+
+  #testBtn {
+    margin-left: auto;
+    background: #1c2536;
+    color: var(--text);
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    cursor: pointer;
+  }
+  #testBtn:active { transform: scale(0.98); }
+  #testBtn:hover { border-color: var(--good); }
+
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+  }
+  @media (max-width: 760px) {
+    .grid { grid-template-columns: 1fr; }
+  }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 12px;
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+  }
+  .panel.bad { border-top: 3px solid var(--bad); }
+  .panel.good { border-top: 3px solid var(--good); }
+
+  .panel h2 {
+    font-size: 1rem;
+    margin: 0 0 4px;
+  }
+  .panel.bad h2 { color: var(--bad); }
+  .panel.good h2 { color: var(--good); }
+
+  .panel .desc {
+    color: var(--muted);
+    font-size: 0.85rem;
+    margin-bottom: 12px;
+    line-height: 1.4;
+  }
+
+  pre {
+    background: #0a0d14;
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    padding: 12px;
+    overflow-x: auto;
+    margin: 0 0 12px;
+  }
+  pre code {
+    font-family: var(--mono);
+    font-size: 0.76rem;
+    line-height: 1.5;
+    color: #c3cad9;
+    white-space: pre;
+  }
+
+  .run-btn {
+    font-family: var(--mono);
+    font-size: 0.88rem;
+    padding: 10px 14px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    color: #0b0e14;
+    font-weight: 600;
+    margin-bottom: 12px;
+  }
+  .panel.bad .run-btn { background: var(--bad); }
+  .panel.good .run-btn { background: var(--good); }
+  .run-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .log {
+    font-family: var(--mono);
+    font-size: 0.76rem;
+    color: var(--muted);
+    background: #0a0d14;
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    padding: 10px;
+    min-height: 110px;
+    flex: 1;
+    overflow-y: auto;
+  }
+  .log .ok { color: var(--good); }
+  .log .warn { color: var(--bad); }
+  .log div { margin-bottom: 3px; }
+
+  .panel.dead {
+    border-top: 3px dashed var(--muted);
+    opacity: 0.92;
+    margin-top: 18px;
+  }
+  .panel.dead h2 { color: var(--text); }
+
+  .badge {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    color: var(--muted);
+    background: #0a0d14;
+    border: 1px solid var(--panel-border);
+    border-radius: 6px;
+    padding: 3px 8px;
+    margin-left: 8px;
+    vertical-align: middle;
+  }
+
+  footer {
+    margin-top: 24px;
+    color: var(--muted);
+    font-size: 0.85rem;
+    line-height: 1.6;
+    border-top: 1px solid var(--panel-border);
+    padding-top: 16px;
+  }
+  footer strong { color: var(--text); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Promise vs. bloqueio síncrono</h1>
+    <p>O problema não é o <code>Promise</code> em si — é rodar lógica demorada de forma <strong>síncrona</strong>, travando a única thread principal do JavaScript. Os indicadores abaixo (relógio, pulso e botão de clique) provam isso ao vivo: eles só continuam respondendo quando a thread principal está livre.</p>
+  </header>
+
+  <div class="status-bar">
+    <span id="pulseIcon">◐</span>
+    <span class="status-item">thread ativa há <strong id="clock">0.0</strong>s</span>
+    <span class="status-item">pulso: <strong id="beat">0</strong></span>
+    <button id="testBtn">clique para testar (cliques: <span id="clickCount">0</span>)</button>
+  </div>
+
+  <div class="grid">
+    <article class="panel bad">
+      <h2>❌ Sem Promise (bloqueante)</h2>
+      <p class="desc">O cálculo pesado roda direto na thread principal. Enquanto ele executa, nada mais no navegador pode acontecer.</p>
+      <pre><code>function calcularRelatorioSincrono() {
+  const inicio = performance.now();
+  let soma = 0;
+
+  // trava a thread principal por 3s
+  while (performance.now() - inicio &lt; 3000) {
+    soma += Math.sqrt(Math.random());
+  }
+  return soma;
+}
+
+btnSync.addEventListener('click', () => {
+  const resultado = calcularRelatorioSincrono();
+  console.log(resultado); // só loga depois de travar tudo
+});</code></pre>
+      <button class="run-btn" id="btnSync">Executar cálculo pesado</button>
+      <div class="log" id="logSync"></div>
+    </article>
+
+    <article class="panel good">
+      <h2>✅ Com Promise (não-bloqueante)</h2>
+      <p class="desc">O mesmo cálculo, mas dividido em pequenos pedaços que devolvem o controle ao navegador a cada iteração.</p>
+      <pre><code>function calcularRelatorioAssincrono() {
+  return new Promise((resolve) => {
+    const inicio = performance.now();
+    let soma = 0;
+
+    function processarPedaco() {
+      const inicioPedaco = performance.now();
+      while (performance.now() - inicioPedaco &lt; 20) {
+        soma += Math.sqrt(Math.random());
+      }
+      if (performance.now() - inicio &lt; 3000) {
+        setTimeout(processarPedaco, 0); // libera a thread
+      } else {
+        resolve(soma);
+      }
+    }
+    processarPedaco();
+  });
+}
+
+btnAsync.addEventListener('click', () => {
+  calcularRelatorioAssincrono().then((resultado) => {
+    console.log(resultado);
+  });
+});</code></pre>
+      <button class="run-btn" id="btnAsync">Executar cálculo pesado</button>
+      <div class="log" id="logAsync"></div>
+    </article>
+  </div>
+
+  <article class="panel dead">
+    <h2>🧊 V2 — mesma lógica com async/await <span class="badge">código ilustrativo, não executado</span></h2>
+    <p class="desc">Mesmo comportamento do painel verde acima (Promise + <code style="font-family: var(--mono); color: var(--good);">setTimeout</code>), só que escrito com <code style="font-family: var(--mono); color: var(--good);">async/await</code> para comparação. Não tem botão nem está conectado a nada nesta página — é só para ler e comparar a sintaxe.</p>
+    <pre><code>// V2 — ilustrativo apenas, equivalente ao calcularRelatorioAssincrono() acima
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function calcularRelatorioAsyncAwait() {
+  const inicio = performance.now();
+  let soma = 0;
+
+  while (performance.now() - inicio &lt; 3000) {
+    const inicioPedaco = performance.now();
+    while (performance.now() - inicioPedaco &lt; 20) {
+      soma += Math.sqrt(Math.random());
+    }
+    await delay(0); // libera a thread, igual ao setTimeout(processarPedaco, 0)
+  }
+
+  return soma;
+}
+
+btnAsync.addEventListener('click', async () => {
+  const resultado = await calcularRelatorioAsyncAwait();
+  console.log(resultado);
+});</code></pre>
+  </article>
+
+  <footer>
+    <strong>Como testar:</strong> clique em "Executar cálculo pesado" em cada painel e, enquanto ele roda, tente clicar no botão de teste acima. No painel vermelho, o relógio, o pulso e o botão travam por 3 segundos. No painel verde, tudo continua respondendo normalmente.
+  </footer>
+</div>
+
+<script>
+  const clockEl = document.getElementById('clock');
+  const beatEl = document.getElementById('beat');
+  const pulseIcon = document.getElementById('pulseIcon');
+  const clickCountEl = document.getElementById('clickCount');
+  const testBtn = document.getElementById('testBtn');
+
+  const startTime = performance.now();
+  let beatCount = 0;
+  let clicks = 0;
+
+  const pulseFrames = ['◐', '◓', '◑', '◒'];
+
+  // Heartbeat orientado por JS (não CSS), para congelar de verdade durante bloqueio
+  setInterval(() => {
+    const elapsed = (performance.now() - startTime) / 1000;
+    clockEl.textContent = elapsed.toFixed(1);
+    beatCount++;
+    beatEl.textContent = beatCount;
+    pulseIcon.textContent = pulseFrames[beatCount % pulseFrames.length];
+  }, 100);
+
+  testBtn.addEventListener('click', () => {
+    clicks++;
+    clickCountEl.textContent = clicks;
+  });
+
+  function log(containerId, message, cls) {
+    const container = document.getElementById(containerId);
+    const line = document.createElement('div');
+    if (cls) line.className = cls;
+    const t = ((performance.now() - startTime) / 1000).toFixed(1);
+    line.textContent = `[${t}s] ${message}`;
+    container.appendChild(line);
+    container.scrollTop = container.scrollHeight;
+  }
+
+  function setButtonsDisabled(disabled) {
+    btnSync.disabled = disabled;
+    btnAsync.disabled = disabled;
+  }
+
+  const btnSync = document.getElementById('btnSync');
+  const btnAsync = document.getElementById('btnAsync');
+
+  function calcularRelatorioSincrono() {
+    const inicio = performance.now();
+    let soma = 0;
+    while (performance.now() - inicio < 3000) {
+      soma += Math.sqrt(Math.random());
+    }
+    return soma;
+  }
+
+  function calcularRelatorioAssincrono() {
+    return new Promise((resolve) => {
+      const inicio = performance.now();
+      let soma = 0;
+
+      function processarPedaco() {
+        const inicioPedaco = performance.now();
+        while (performance.now() - inicioPedaco < 20) {
+          soma += Math.sqrt(Math.random());
+        }
+        if (performance.now() - inicio < 3000) {
+          setTimeout(processarPedaco, 0);
+        } else {
+          resolve(soma);
+        }
+      }
+      processarPedaco();
+    });
+  }
+
+  btnSync.addEventListener('click', () => {
+    document.getElementById('logSync').innerHTML = '';
+    setButtonsDisabled(true);
+    log('logSync', 'Iniciando cálculo (SEM Promise)...');
+    log('logSync', 'Tente clicar no botão de teste agora — nada vai responder.', 'warn');
+
+    // Roda de forma síncrona: o navegador só executa a linha abaixo
+    // e não processa mais nada (nem repintar a tela) até ela terminar.
+    setTimeout(() => {
+      const resultado = calcularRelatorioSincrono();
+      log('logSync', `Cálculo concluído! Resultado: ${resultado.toFixed(2)}`, 'ok');
+      setButtonsDisabled(false);
+    }, 0);
+  });
+
+  btnAsync.addEventListener('click', () => {
+    document.getElementById('logAsync').innerHTML = '';
+    setButtonsDisabled(true);
+    log('logAsync', 'Iniciando cálculo (COM Promise)...');
+    log('logAsync', 'Clique no botão de teste — ele continua respondendo.', 'ok');
+
+    calcularRelatorioAssincrono().then((resultado) => {
+      log('logAsync', `Cálculo concluído! Resultado: ${resultado.toFixed(2)}`, 'ok');
+      setButtonsDisabled(false);
+    });
+  });
+</script>
+</body>
+</html>

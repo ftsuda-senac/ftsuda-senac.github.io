@@ -1,0 +1,9 @@
+{
+  "type": "CSS",
+  "title": "Seletores de atributos",
+  "description": "Mostra seletores por presença, valor, início, fim, palavra e trecho de atributo.",
+  "html": "<p data-status>Tem o atributo</p>\n<input type=\"email\" placeholder=\"Valor exato\" />\n<p class=\"tag importante\">Contém uma palavra</p>\n<a href=\"https://exemplo.com\">Começa com https</a>\n<a href=\"arquivo.pdf\">Termina com .pdf</a>\n<p title=\"guia rápido\">Contém guia</p>",
+  "css": "[data-status] { color: blue; }\n[type=\"email\"] { border-color: green; }\n[class~=\"importante\"] { font-weight: bold; }\n[href^=\"https\"] { color: green; }\n[href$=\".pdf\"] { color: red; }\n[title*=\"guia\"] { background: yellow; }",
+  "javascript": "",
+  "assets": []
+}

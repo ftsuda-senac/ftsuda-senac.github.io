@@ -1,0 +1,9 @@
+{
+  "type": "HTML",
+  "title": "Definition lists",
+  "description": "Mostra uma lista de termos e definições com dl, dt e dd.",
+  "html": "<dl>\n  <dt>HTML</dt>\n  <dd>Linguagem de marcação para páginas web.</dd>\n\n  <dt>CSS</dt>\n  <dd>Linguagem usada para estilizar páginas web.</dd>\n</dl>",
+  "css": "",
+  "javascript": "",
+  "assets": []
+}

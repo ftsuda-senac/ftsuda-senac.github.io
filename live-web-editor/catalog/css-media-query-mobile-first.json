@@ -1,0 +1,1 @@
+{"type":"CSS","title":"Media query mobile first","description":"Começa com a regra para celular e altera o layout em telas maiores.","html":"<div>Conteúdo</div>","css":"div {\n  padding: 16px;\n  background: lightblue;\n}\n\n@media (min-width: 768px) {\n  div {\n    background: lightgreen;\n  }\n}","javascript":"","assets":[]}

@@ -1,0 +1,1 @@
+{"type":"JS","title":"Funções","description":"Cria e chama uma função simples.","html":"<pre id=\"result\"></pre>","css":"","javascript":"function saudacao(nome) {\n  return `Olá, ${nome}!`;\n}\n\ndocument.querySelector('#result').textContent = saudacao('Ana');","assets":[]}

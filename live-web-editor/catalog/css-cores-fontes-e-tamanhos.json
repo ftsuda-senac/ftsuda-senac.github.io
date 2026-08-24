@@ -1,0 +1,1 @@
+{"type":"CSS","title":"Cores, fontes e tamanhos","description":"Define cor, família de fonte e tamanho do texto.","html":"<p>Texto de exemplo</p>","css":"p {\n  color: navy;\n  font-family: Arial, sans-serif;\n  font-size: 24px;\n}","javascript":"","assets":[]}

@@ -1,0 +1,1 @@
+{"type":"HTML","title":"Elementos semânticos","description":"Mostra a estrutura semântica básica de uma página.","html":"<header>Cabeçalho</header>\n<main>\n  <section>Conteúdo principal</section>\n</main>\n<footer>Rodapé</footer>","css":"","javascript":"","assets":[]}

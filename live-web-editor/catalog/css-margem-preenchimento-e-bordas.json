@@ -1,0 +1,1 @@
+{"type":"CSS","title":"Margem, preenchimento e bordas","description":"Mostra margin, padding e border.","html":"<div>Caixa</div>","css":"div {\n  margin: 20px;\n  padding: 16px;\n  border: 2px solid black;\n}","javascript":"","assets":[]}

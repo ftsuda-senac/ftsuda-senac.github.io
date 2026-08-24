@@ -1,0 +1,1 @@
+{"type":"JS","title":"Laços for e for...of","description":"Mostra duas formas de percorrer valores.","html":"<pre id=\"result\"></pre>","css":"","javascript":"let texto = '';\n\nfor (let i = 1; i <= 3; i++) {\n  texto += `${i} `;\n}\n\nfor (const cor of ['azul', 'verde']) {\n  texto += cor + ' ';\n}\n\ndocument.querySelector('#result').textContent = texto;","assets":[]}

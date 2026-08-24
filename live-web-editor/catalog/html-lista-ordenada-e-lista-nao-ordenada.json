@@ -1,0 +1,9 @@
+{
+  "type": "HTML",
+  "title": "Lista ordenada e Lista não ordenada",
+  "description": "Mostra uma lista ordenada e uma lista não ordenada com três itens.",
+  "html": "<h2>Lista ordenada</h2>\n<ol>\n  <li>Primeiro item</li>\n  <li>Segundo item</li>\n  <li>Terceiro item</li>\n</ol>\n\n<h2>Lista não ordenada</h2>\n<ul>\n  <li>Primeiro item</li>\n  <li>Segundo item</li>\n  <li>Terceiro item</li>\n</ul>",
+  "css": "",
+  "javascript": "",
+  "assets": []
+}

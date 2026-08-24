@@ -1,0 +1,9 @@
+{
+  "type": "CSS",
+  "title": "Uso de display grid básico",
+  "description": "Usa display grid para criar uma grade 2 por 2.",
+  "html": "<div class=\"grid\">\n  <div>1</div>\n  <div>2</div>\n  <div>3</div>\n  <div>4</div>\n</div>",
+  "css": ".grid {\n  display: grid;\n  grid-template-columns: 1fr 1fr;\n  gap: 8px;\n}\n\n.grid div {\n  padding: 16px;\n  background: lightgreen;\n}",
+  "javascript": "",
+  "assets": []
+}

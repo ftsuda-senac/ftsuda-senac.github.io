@@ -1,0 +1,1 @@
+{"type":"JS","title":"Condicional if e else","description":"Mostra uma decisão usando if e else.","html":"<pre id=\"result\"></pre>","css":"","javascript":"const idade = 18;\n\nif (idade >= 18) {\n  document.querySelector('#result').textContent = 'Maior de idade';\n} else {\n  document.querySelector('#result').textContent = 'Menor de idade';\n}","assets":[]}

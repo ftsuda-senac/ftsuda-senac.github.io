@@ -1,0 +1,9 @@
+{
+  "type": "HTML",
+  "title": "Tabelas",
+  "description": "Mostra uma tabela com thead, tbody e tfoot.",
+  "html": "<table>\n  <thead>\n    <tr><th>Produto</th><th>Quantidade</th><th>Preço</th></tr>\n  </thead>\n  <tbody>\n    <tr><td>Caneta</td><td>2</td><td>R$ 4</td></tr>\n    <tr><td>Caderno</td><td>1</td><td>R$ 12</td></tr>\n    <tr><td>Borracha</td><td>3</td><td>R$ 6</td></tr>\n  </tbody>\n  <tfoot>\n    <tr><td>Total</td><td>6</td><td>R$ 22</td></tr>\n  </tfoot>\n</table>",
+  "css": "",
+  "javascript": "",
+  "assets": []
+}

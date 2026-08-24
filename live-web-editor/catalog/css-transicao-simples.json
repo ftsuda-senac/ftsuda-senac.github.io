@@ -1,0 +1,1 @@
+{"type":"CSS","title":"Transição simples","description":"Anima uma mudança de cor ao passar o mouse.","html":"<button>Passe o mouse</button>","css":"button {\n  background: lightblue;\n  transition: background 0.3s;\n}\n\nbutton:hover {\n  background: lightgreen;\n}","javascript":"","assets":[]}

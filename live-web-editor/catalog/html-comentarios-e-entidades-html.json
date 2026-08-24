@@ -1,0 +1,1 @@
+{"type":"HTML","title":"Comentários e entidades HTML","description":"Mostra um comentário e entidades especiais do HTML.","html":"<!-- Este texto é um comentário -->\n<p>&lt; é menor que, &gt; é maior que e &copy; é copyright.</p>","css":"","javascript":"","assets":[]}

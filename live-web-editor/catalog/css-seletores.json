@@ -1,0 +1,9 @@
+{
+  "type": "CSS",
+  "title": "Seletores",
+  "description": "Mostra seletores de tag, classe, id e atributo.",
+  "html": "<p>Seletor de tag</p>\n<p class=\"destaque\">Seletor de classe</p>\n<p id=\"aviso\">Seletor de id</p>\n<input type=\"text\" placeholder=\"Seletor de atributo\" />",
+  "css": "p { color: blue; }\n.destaque { font-weight: bold; }\n#aviso { color: red; }\ninput[type=\"text\"] { border: 2px solid green; }",
+  "javascript": "",
+  "assets": []
+}

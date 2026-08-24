@@ -1,0 +1,9 @@
+{
+  "type": "HTML",
+  "title": "Títulos <h1> a <h6>",
+  "description": "Mostra os níveis h1 e h6.",
+  "html": "<h1>Título h1</h1>\n<h2>Título h2</h2>\n<h3>Título h3</h3>\n<h4>Título h4</h4>\n<h5>Título h5</h5>\n<h6>Título h6</h6>",
+  "css": "",
+  "javascript": "",
+  "assets": []
+}

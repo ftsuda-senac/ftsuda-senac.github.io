@@ -1,0 +1,1 @@
+{"type":"CSS","title":"Box model","description":"Mostra conteúdo, padding, borda e margem de uma caixa.","html":"<div>Conteúdo</div>","css":"div {\n  width: 200px;\n  padding: 20px;\n  border: 5px solid blue;\n  margin: 20px;\n}","javascript":"","assets":[]}

@@ -1,0 +1,9 @@
+{
+  "type": "CSS",
+  "title": "Uso display flex básico",
+  "description": "Usa display flex para alinhar itens em uma linha.",
+  "html": "<div class=\"flex\">\n  <div>1</div>\n  <div>2</div>\n  <div>3</div>\n</div>",
+  "css": ".flex {\n  display: flex;\n  gap: 8px;\n}\n\n.flex div {\n  padding: 16px;\n  background: lightblue;\n}",
+  "javascript": "",
+  "assets": []
+}

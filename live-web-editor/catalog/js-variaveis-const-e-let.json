@@ -1,0 +1,1 @@
+{"type":"JS","title":"Variáveis const e let","description":"Mostra uma constante e uma variável que pode mudar.","html":"<pre id=\"result\"></pre>","css":"","javascript":"const nome = 'Ana';\nlet idade = 20;\nidade = 21;\n\ndocument.querySelector('#result').textContent = `${nome}: ${idade}`;","assets":[]}
