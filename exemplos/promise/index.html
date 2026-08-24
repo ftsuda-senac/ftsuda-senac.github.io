@@ -216,6 +216,8 @@
     <article class="panel bad">
       <h2>❌ Sem Promise (bloqueante)</h2>
       <p class="desc">O cálculo pesado roda direto na thread principal. Enquanto ele executa, nada mais no navegador pode acontecer.</p>
+      <button class="run-btn" id="btnSync">Executar cálculo pesado</button>
+      <div class="log" id="logSync"></div>
       <pre><code>function calcularRelatorioSincrono() {
   const inicio = performance.now();
   let soma = 0;
@@ -231,13 +233,14 @@ btnSync.addEventListener('click', () => {
   const resultado = calcularRelatorioSincrono();
   console.log(resultado); // só loga depois de travar tudo
 });</code></pre>
-      <button class="run-btn" id="btnSync">Executar cálculo pesado</button>
-      <div class="log" id="logSync"></div>
     </article>
 
     <article class="panel good">
       <h2>✅ Com Promise (não-bloqueante)</h2>
+      
       <p class="desc">O mesmo cálculo, mas dividido em pequenos pedaços que devolvem o controle ao navegador a cada iteração.</p>
+      <button class="run-btn" id="btnAsync">Executar cálculo pesado</button>
+      <div class="log" id="logAsync"></div>
       <pre><code>function calcularRelatorioAssincrono() {
   return new Promise((resolve) => {
     const inicio = performance.now();
@@ -263,8 +266,7 @@ btnAsync.addEventListener('click', () => {
     console.log(resultado);
   });
 });</code></pre>
-      <button class="run-btn" id="btnAsync">Executar cálculo pesado</button>
-      <div class="log" id="logAsync"></div>
+
     </article>
   </div>
 
